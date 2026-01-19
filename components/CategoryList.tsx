@@ -31,7 +31,7 @@ const getCategoryIcon = (id: number): LucideIcon => {
     case 0: return LayoutGrid;    // Todos
     case -1: return Heart;        // Favoritos
     case -2: return History;      // Recentes
-    case -3: return Gamepad2;     // Jogos
+    case -3: return Trophy;       // Futebol Ao vivo (was Gamepad2)
     case 8: return Flame;         // BBB
     case 6: return Tv;            // TV Aberta
     case 1: return Trophy;        // Esportes

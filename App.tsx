@@ -66,7 +66,7 @@ const App: React.FC = () => {
         
         const enhancedCategories = [
           todosCat,
-          { id: -3, name: "Jogos" }, // New Games Category
+          { id: -3, name: "Futebol Ao vivo" }, // Renamed from Jogos
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats

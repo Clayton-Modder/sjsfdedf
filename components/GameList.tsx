@@ -47,7 +47,7 @@ export const GameList: React.FC<GameListProps> = ({ games, loading }) => {
         <div className="bg-gray-800 p-4 rounded-full mb-4">
             <Trophy className="w-8 h-8 opacity-50" />
         </div>
-        <p className="text-lg font-medium">Nenhum jogo encontrado para hoje.</p>
+        <p className="text-lg font-medium">Nenhuma partida encontrada para hoje.</p>
         <p className="text-sm opacity-70">Verifique novamente mais tarde.</p>
       </div>
     );
@@ -100,7 +100,7 @@ export const GameList: React.FC<GameListProps> = ({ games, loading }) => {
                 {game.players.length > 0 ? (
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 group-hover:text-white">
                         <Tv className="w-4 h-4" />
-                        <span>Assistir</span>
+                        <span>Assistir Partida</span>
                     </div>
                 ) : (
                     <span className="text-xs text-red-400 font-medium">Indisponível</span>
