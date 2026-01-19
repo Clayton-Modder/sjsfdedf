@@ -13,8 +13,7 @@ export const initialData: ApiData = {
     { "id": 3, "name": "Documentários" },
     { "id": 7, "name": "Variedades" },
     { "id": 10, "name": "Religiosos" },
-    { "id": 11, "name": "Música" },
-    { "id": 12, "name": "Adultos (+18)" }
+    { "id": 11, "name": "Música" }
   ],
   "channels": [
     { "id": "bbbmosaico", "image": "https://embedtv.best/assets/images/bbb.png", "name": "BBB - Mosaico", "categories": [0, 8], "url": "https://www1.embedtv.best/bbbmosaico", "currentProgram": "Ao Vivo - Multicâmeras" },
@@ -100,7 +99,6 @@ export const initialData: ApiData = {
     { "id": "paramountchannel", "image": "https://embedtv.best/assets/images/paramountchannel.png", "name": "Paramount", "categories": [0, 4], "url": "https://www1.embedtv.best/paramountchannel" },
     { "id": "paramountplus", "image": "https://embedtv.best/assets/images/paramountplus.png", "name": "Paramount Plus", "categories": [0, 1, 4], "url": "https://www1.embedtv.best/paramountplus" },
     { "id": "paramountplus2", "image": "https://embedtv.best/assets/images/paramountplus.png", "name": "Paramount Plus 2", "categories": [0, 1, 4], "url": "https://www1.embedtv.best/paramountplus2" },
-    { "id": "playboy", "image": "https://embedtv.best/assets/images/playboy.png", "name": "Play Boy", "categories": [0, 12], "url": "https://www1.embedtv.best/playboy" },
     { "id": "premiere", "image": "https://embedtv.best/assets/images/premiere.png", "name": "Premiere 1", "categories": [0, 1], "url": "https://www1.embedtv.best/premiere" },
     { "id": "premiere2", "image": "https://embedtv.best/assets/images/premiere.png", "name": "Premiere 2", "categories": [0, 1], "url": "https://www1.embedtv.best/premiere2" },
     { "id": "premiere3", "image": "https://embedtv.best/assets/images/premiere.png", "name": "Premiere 3", "categories": [0, 1], "url": "https://www1.embedtv.best/premiere3" },
@@ -113,7 +111,6 @@ export const initialData: ApiData = {
     { "id": "primevideo2", "image": "https://embedtv.best/assets/images/primevideo.png", "name": "Prime Video 2", "categories": [0, 1, 4], "url": "https://www1.embedtv.best/primevideo2" },
     { "id": "record", "image": "https://embedtv.best/assets/images/record.png", "name": "Record", "categories": [0, 6, 5, 7], "url": "https://www1.embedtv.best/record" },
     { "id": "sbt", "image": "https://embedtv.best/assets/images/sbt.png", "name": "SBT Central", "categories": [0, 5, 6, 7], "url": "https://www1.embedtv.best/sbt" },
-    { "id": "sexyhot", "image": "https://embedtv.best/assets/images/Sexy.png", "name": "Sexy Hot", "categories": [0, 12], "url": "https://www1.embedtv.best/sexyhot" },
     { "id": "sonychannel", "image": "https://embedtv.best/assets/images/sonychannel.png", "name": "Sony Channel", "categories": [0, 4], "url": "https://www1.embedtv.best/sonychannel" },
     { "id": "space", "image": "https://embedtv.best/assets/images/space.png", "name": "Space", "categories": [0, 4], "url": "https://www1.embedtv.best/space" },
     { "id": "sportv", "image": "https://embedtv.best/assets/images/sportv.png", "name": "Sportv", "categories": [0, 1], "url": "https://www1.embedtv.best/sportv" },

@@ -16,7 +16,6 @@ import {
   Clock,
   Music,
   BookOpen,
-  Lock,
   LucideIcon 
 } from 'lucide-react';
 
@@ -44,7 +43,6 @@ const getCategoryIcon = (id: number): LucideIcon => {
     case 7: return Shuffle;       // Variedades
     case 10: return BookOpen;     // Religiosos
     case 11: return Music;        // Música
-    case 12: return Lock;         // Adultos
     default: return Tv;
   }
 };
