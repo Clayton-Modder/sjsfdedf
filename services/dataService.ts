@@ -9,87 +9,8 @@ interface CachedData {
   data: ApiData;
 }
 
-// Static Fallback Data provided by user
-const FALLBACK_GAMES: Game[] = [
-  {
-    "title": "Parma X Genoa",
-    "image": "https://imgur.com/LRMCkG2.png",
-    "data": {
-      "league": "Campeonato Italiano",
-      "timer": { "start": 1768735800, "end": 1768743600 },
-      "teams": {
-        "home": { "name": "Parma", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/parma.webp" },
-        "away": { "name": "Genoa", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/genoa.webp" }
-      }
-    },
-    "players": ["https://www1.embedtv.best/pt_sportv2"]
-  },
-  {
-    "title": "Getafe X Valencia",
-    "image": "https://imgur.com/rgeFEJi.png",
-    "data": {
-      "league": "La Liga",
-      "timer": { "start": 1768741200, "end": 1768749000 },
-      "teams": {
-        "home": { "name": "Getafe", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/getafe.webp" },
-        "away": { "name": "Valencia", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/valencia.webp" }
-      }
-    },
-    "players": ["https://www1.embedtv.best/disneyplus1"]
-  },
-  {
-    "title": "Wolves X Newcastle",
-    "image": "https://imgur.com/5oKeIid.png",
-    "data": {
-      "league": "Campeonato Inglês",
-      "timer": { "start": 1768744800, "end": 1768752600 },
-      "teams": {
-        "home": { "name": "Wolverhampton", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/wolverhampton.webp" },
-        "away": { "name": "Newcastle", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/newcastle.webp" }
-      }
-    },
-    "players": ["https://www1.embedtv.best/espn"]
-  },
-  {
-    "title": "Bologna X Fiorentina",
-    "image": "https://imgur.com/sRNR7yp.png",
-    "data": {
-      "league": "Campeonato Italiano",
-      "timer": { "start": 1768744800, "end": 1768752600 },
-      "teams": {
-        "home": { "name": "Bologna", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/bologna.webp" },
-        "away": { "name": "Fiorentina", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/fiorentina.webp" }
-      }
-    },
-    "players": ["https://www1.embedtv.best/xsports"]
-  },
-  {
-    "title": "VfB Stuttgart X Union Berlin",
-    "image": "https://imgur.com/WKRTmCp.png",
-    "data": {
-      "league": "Campeonato Alemão",
-      "timer": { "start": 1768746600, "end": 1768754400 },
-      "teams": {
-        "home": { "name": "Stuttgart", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/stuttgart.webp" },
-        "away": { "name": "Union Berlin", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/union-berlin.webp" }
-      }
-    },
-    "players": []
-  },
-  {
-    "title": "Atletico Madrid X Alavés",
-    "image": "https://imgur.com/e2oQk3o.png",
-    "data": {
-      "league": "La Liga",
-      "timer": { "start": 1768752000, "end": 1768759800 },
-      "teams": {
-        "home": { "name": "Atletico Madrid", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/atletico-madrid.webp" },
-        "away": { "name": "Alavés", "image": "https://d1muf25xaso8hp.cloudfront.net/https://futemax.giving/assets/uploads/teams/alaves.webp" }
-      }
-    },
-    "players": ["https://www1.embedtv.best/disneyplus1"]
-  }
-];
+// Static Fallback Data removed as requested
+const FALLBACK_GAMES: Game[] = [];
 
 export const fetchChannels = async (): Promise<ApiData> => {
   try {
@@ -143,15 +64,15 @@ export const fetchGames = async (): Promise<Game[]> => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateString = `${day}${month}${year}`;
-    const targetUrl = `https://embedtv.best/jogos.php?day=${dateString}`;
     
-    // Attempt fetch using a CORS proxy to bypass browser restrictions
-    // We use allorigins.win as a proxy service
-    const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
+    // Updated URL to use the new source provided by the user
+    // Direct fetch without proxy as requested
+    const targetUrl = `https://megacanaisonline.space/api/scramnpjogos.php?day=${dateString}`;
+    
+    const response = await fetch(targetUrl);
     
     if (!response.ok) {
-       // If proxy fails, throw to handle in catch block
-       throw new Error('Failed to fetch games via proxy');
+       throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -159,12 +80,11 @@ export const fetchGames = async (): Promise<Game[]> => {
       return data;
     }
     
-    return data.length > 0 ? data : FALLBACK_GAMES;
+    return [];
     
   } catch (error) {
-    // Suppress verbose logging for CORS errors to keep console clean, 
-    // as we have a robust fallback mechanism.
-    console.log("Using fallback games data.");
-    return FALLBACK_GAMES;
+    // Log helpful info for debugging but don't crash app
+    console.warn("Could not fetch live games.", error);
+    return [];
   }
 };
