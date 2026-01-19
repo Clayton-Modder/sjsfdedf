@@ -5,6 +5,7 @@ import { Channel, Category } from './types';
 import { Loader2 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
+import { RemoteControl } from './components/RemoteControl';
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -95,6 +96,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <div className="min-h-screen bg-dark text-white font-sans relative">
+        <RemoteControl channels={channels} />
         <Routes>
           <Route 
             path="/" 
