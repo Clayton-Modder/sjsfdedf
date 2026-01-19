@@ -8,9 +8,12 @@ import {
   Volume2, 
   VolumeX, 
   Expand,
-  Minimize2
+  Minimize2,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { generateChannelDescription, Source } from '../services/aiService';
 
 interface PlayerProps {
   channel: Channel;
@@ -22,6 +25,11 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const [hasError, setHasError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   
+  // AI Description State
+  const [aiDescription, setAiDescription] = useState<string | null>(null);
+  const [aiSources, setAiSources] = useState<Source[]>([]);
+  const [loadingAi, setLoadingAi] = useState(false);
+
   // UI States
   const [isCinemaMode, setIsCinemaMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -35,6 +43,26 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     setIsLoading(true);
     setHasError(false);
     setIframeKey(prev => prev + 1);
+    
+    // Reset AI state
+    setAiDescription(null);
+    setAiSources([]);
+    
+    // Fetch AI Description
+    const fetchDescription = async () => {
+      setLoadingAi(true);
+      const result = await generateChannelDescription(channel.name);
+      if (result) {
+        setAiDescription(result.text);
+        setAiSources(result.sources);
+      }
+      setLoadingAi(false);
+    };
+    
+    // Debounce slightly to avoid race conditions on rapid switching
+    const timer = setTimeout(fetchDescription, 100);
+    return () => clearTimeout(timer);
+
   }, [channel]);
 
   // Clean up timeout on unmount
@@ -271,22 +299,64 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           </div>
         </div>
 
-        {/* Footer Info - Only visible when NOT in Cinema Mode */}
+        {/* Footer Info & AI Description - Only visible when NOT in Cinema Mode */}
         {!isCinemaMode && (
-          <div className="mt-6 p-4 bg-card rounded-xl border border-gray-800">
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="mt-6 p-5 bg-card rounded-xl border border-gray-800 shadow-lg">
+             <div className="flex flex-col gap-4">
+               
+               {/* Header Info */}
                <div>
-                 <h3 className="text-lg font-semibold mb-1 text-white">Informações do Canal</h3>
-                 <p className="text-gray-400 text-sm">
-                   {channel.description || `Assistindo ${channel.name} ao vivo. A qualidade da transmissão depende da sua conexão com a internet.`}
-                 </p>
+                 <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-semibold text-white">Sobre o Canal</h3>
+                    {loadingAi && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
+                 </div>
+                 
+                 {/* AI Content */}
+                 <div className="relative">
+                   {aiDescription ? (
+                     <div className="prose prose-invert max-w-none">
+                       <div className="flex gap-2 items-start">
+                         <Sparkles className="w-5 h-5 text-yellow-500 mt-1 flex-shrink-0" />
+                         <p className="text-gray-300 text-base leading-relaxed">
+                           {aiDescription}
+                         </p>
+                       </div>
+                     </div>
+                   ) : (
+                     <p className="text-gray-400 text-sm italic">
+                       {loadingAi ? 'Gerando descrição inteligente...' : (channel.description || `Assistindo ${channel.name} ao vivo.`)}
+                     </p>
+                   )}
+                 </div>
                </div>
-             </div>
-             
-             <div className="mt-4 flex gap-4 border-t border-gray-700 pt-4">
-                <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" /> Informar problema
-                </button>
+
+               {/* Grounding Sources */}
+               {aiSources.length > 0 && (
+                 <div className="mt-2 pt-3 border-t border-gray-700/50">
+                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fontes Verificadas</p>
+                   <div className="flex flex-wrap gap-2">
+                     {aiSources.slice(0, 3).map((source, idx) => (
+                       <a 
+                         key={idx}
+                         href={source.uri}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-full text-xs text-blue-400 hover:text-blue-300 transition-colors border border-gray-700"
+                       >
+                         <ExternalLink className="w-3 h-3" />
+                         <span className="truncate max-w-[150px]">{source.title}</span>
+                       </a>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
+               <div className="flex gap-4 pt-2">
+                  <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" /> Informar problema no vídeo
+                  </button>
+               </div>
+
              </div>
           </div>
         )}
