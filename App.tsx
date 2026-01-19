@@ -131,15 +131,14 @@ const App: React.FC = () => {
                 Este site utiliza links de terceiros e não hospeda conteúdo. Ao entrar, você concorda com os termos de uso. Esta mensagem aparecerá novamente em 2 horas.
               </p>
 
-              <button 
+              <a 
+                href="go:main"
                 onClick={handleEnterSite}
-                className="w-full bg-primary hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 flex items-center justify-center gap-2 group"
+                className="w-full bg-primary hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 flex items-center justify-center gap-2 group decoration-none"
               >
                 <span>ENTRAR</span>
                 <CheckCircle2 className="w-5 h-5 group-hover:text-white/80" />
-              </button>
-              
-              <p className="mt-4 text-xs text-gray-600">go:main</p>
+              </a>
             </div>
           </div>
         )}
