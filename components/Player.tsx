@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Channel } from '../types';
-import { Maximize2, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { 
+  Maximize2, 
+  AlertCircle, 
+  Loader2, 
+  ArrowLeft, 
+  Volume2, 
+  VolumeX, 
+  Expand,
+  Minimize2
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PlayerProps {
@@ -12,6 +21,13 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  
+  // UI States
+  const [isCinemaMode, setIsCinemaMode] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
+  const controlsTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Reset state when channel changes
@@ -35,6 +51,10 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     }
   };
 
+  const toggleCinemaMode = () => {
+    setIsCinemaMode(!isCinemaMode);
+  };
+
   const handleReload = () => {
     setIsLoading(true);
     setHasError(false);
@@ -45,10 +65,38 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     navigate(-1);
   };
 
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVol = parseInt(e.target.value);
+    setVolume(newVol);
+    if (newVol > 0 && isMuted) setIsMuted(false);
+    if (newVol === 0) setIsMuted(true);
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (isMuted && volume === 0) setVolume(50);
+  };
+
+  // Interaction handlers for showing/hiding controls
+  const handleInteraction = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      window.clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = window.setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+  }, []);
+
   return (
-    <div className="w-full bg-dark pt-4 pb-6 animate-in fade-in zoom-in-95 duration-300">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="flex items-center gap-4 mb-4 text-white">
+    <div className={`w-full bg-dark transition-all duration-500 ${isCinemaMode ? 'py-0' : 'pt-4 pb-6'}`}>
+      <div 
+        className={`mx-auto transition-all duration-500 ${
+          isCinemaMode ? 'max-w-full px-0' : 'container px-4 max-w-6xl'
+        }`}
+      >
+        {/* Header Section - Hidden in Cinema Mode for immersion */}
+        <div className={`flex items-center gap-4 mb-4 text-white transition-all duration-300 ${isCinemaMode ? 'h-0 opacity-0 overflow-hidden mb-0' : 'h-auto opacity-100'}`}>
              <button 
                 onClick={handleBack}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
@@ -67,9 +115,17 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
              </div>
         </div>
 
+        {/* Player Container */}
         <div 
           id="video-player-container" 
-          className="relative aspect-video w-full bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10"
+          className={`
+            relative bg-black overflow-hidden shadow-2xl ring-1 ring-white/10 group
+            transition-all duration-500
+            ${isCinemaMode ? 'rounded-none h-[80vh] sm:h-[85vh]' : 'rounded-xl aspect-video w-full'}
+          `}
+          onMouseMove={handleInteraction}
+          onClick={handleInteraction}
+          onTouchStart={handleInteraction}
         >
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10 text-white">
@@ -105,25 +161,77 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           )}
 
           {/* Player Controls Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex justify-end">
-             <button 
-               onClick={handleFullscreen}
-               className="p-3 text-white hover:bg-white/20 rounded-xl transition-colors backdrop-blur-sm"
-               title="Tela Cheia"
-             >
-               <Maximize2 className="w-6 h-6" />
-             </button>
+          <div 
+            className={`
+              absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent 
+              transition-opacity duration-300 flex items-end justify-between gap-4
+              ${showControls || isLoading ? 'opacity-100' : 'opacity-0'}
+            `}
+          >
+             {/* Left Controls (Volume) */}
+             <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto">
+                  <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
+                    {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <div className="w-0 overflow-hidden group-hover/vol:w-24 transition-all duration-300 ease-out flex items-center">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={isMuted ? 0 : volume} 
+                      onChange={handleVolumeChange} 
+                      className="h-1 w-20 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary" 
+                    />
+                  </div>
+                </div>
+             </div>
+
+             {/* Right Controls (Modes) */}
+             <div className="flex items-center gap-2 pointer-events-auto">
+               <button 
+                 onClick={toggleCinemaMode}
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors hidden sm:flex items-center gap-2"
+                 title={isCinemaMode ? "Modo Padrão" : "Modo Cinema"}
+               >
+                 {isCinemaMode ? <Minimize2 className="w-5 h-5" /> : <Expand className="w-5 h-5" />}
+                 <span className="text-xs font-bold">{isCinemaMode ? "Padrão" : "Cinema"}</span>
+               </button>
+
+               <button 
+                 onClick={handleFullscreen}
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-primary rounded-lg transition-colors"
+                 title="Tela Cheia"
+               >
+                 <Maximize2 className="w-5 h-5" />
+               </button>
+             </div>
           </div>
         </div>
 
+        {/* Footer Info */}
         <div className="mt-6 p-4 bg-card rounded-xl border border-gray-800">
-           <h3 className="text-lg font-semibold mb-2 text-white">Informações do Canal</h3>
-           <p className="text-gray-400">
-             {channel.description || `Assistindo ${channel.name} ao vivo. A qualidade da transmissão depende da sua conexão com a internet.`}
-           </p>
-           <div className="mt-4 flex gap-4">
-              <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline">
-                Informar problema no canal
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+             <div>
+               <h3 className="text-lg font-semibold mb-1 text-white">Informações do Canal</h3>
+               <p className="text-gray-400 text-sm">
+                 {channel.description || `Assistindo ${channel.name} ao vivo. A qualidade da transmissão depende da sua conexão com a internet.`}
+               </p>
+             </div>
+             
+             {isCinemaMode && (
+               <button 
+                onClick={toggleCinemaMode}
+                className="text-primary text-sm font-medium hover:underline whitespace-nowrap"
+               >
+                 Sair do Modo Cinema
+               </button>
+             )}
+           </div>
+           
+           <div className="mt-4 flex gap-4 border-t border-gray-700 pt-4">
+              <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" /> Informar problema
               </button>
            </div>
         </div>
