@@ -5,13 +5,11 @@ import { Channel, Category } from './types';
 import { Loader2 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
-import { AIAssistant } from './components/AIAssistant';
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
-  const [isAIOpen, setIsAIOpen] = useState(false);
   
   // Favorites State with localStorage persistence
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -84,7 +82,6 @@ const App: React.FC = () => {
                 categories={categories}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
-                onOpenAI={() => setIsAIOpen(true)}
               />
             } 
           />
@@ -93,12 +90,6 @@ const App: React.FC = () => {
             element={<Watch channels={channels} />} 
           />
         </Routes>
-
-        <AIAssistant 
-          isOpen={isAIOpen} 
-          onClose={() => setIsAIOpen(false)} 
-          channels={channels}
-        />
       </div>
     </HashRouter>
   );

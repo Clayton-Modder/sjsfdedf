@@ -10,10 +10,9 @@ interface HomeProps {
   categories: Category[];
   favorites: string[];
   toggleFavorite: (id: string) => void;
-  onOpenAI: () => void;
 }
 
-export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite, onOpenAI }) => {
+export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite }) => {
   const navigate = useNavigate();
   const [activeCategoryId, setActiveCategoryId] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -48,7 +47,6 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
       <Header 
         searchTerm={searchQuery} 
         onSearch={setSearchQuery}
-        onOpenAI={onOpenAI}
       />
 
       <CategoryList 
