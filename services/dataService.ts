@@ -1,7 +1,7 @@
 import { ApiData } from '../types';
 import { initialData } from './initialData';
 
-const CACHE_KEY = 'megatv_data_v1';
+const CACHE_KEY = 'megacanaistv_data_v1';
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
 interface CachedData {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { fetchChannels } from './services/dataService';
 import { Channel, Category } from './types';
@@ -22,6 +22,17 @@ const App: React.FC = () => {
     }
   });
 
+  // History State with localStorage persistence
+  const [history, setHistory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Error loading history", e);
+      return [];
+    }
+  });
+
   const toggleFavorite = (channelId: string) => {
     setFavorites(prev => {
       const newFavs = prev.includes(channelId)
@@ -33,19 +44,29 @@ const App: React.FC = () => {
     });
   };
 
+  const addToHistory = useCallback((channelId: string) => {
+    setHistory(prev => {
+      // Remove if exists to move to top, limit to 10
+      const newHistory = [channelId, ...prev.filter(id => id !== channelId)].slice(0, 10);
+      localStorage.setItem('history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  }, []);
+
   // Initial Data Fetch
   useEffect(() => {
     const loadData = async () => {
       try {
         const data = await fetchChannels();
         
-        // Inject "Favoritos" category after "Todos" (assuming Todos is id 0)
+        // Inject "Favoritos" and "Recentes" categories
         const todosCat = data.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
         const otherCats = data.categories.filter(c => c.id !== 0);
         
         const enhancedCategories = [
           todosCat,
           { id: -1, name: "Favoritos" },
+          { id: -2, name: "Recentes" },
           ...otherCats
         ];
 
@@ -64,7 +85,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-dark flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-        <h1 className="text-xl font-bold text-white tracking-widest">Mega<span className="text-primary">TV</span></h1>
+        <h1 className="text-xl font-bold text-white tracking-widest">Mega Canais <span className="text-primary">TV</span></h1>
         <p className="text-gray-500 mt-2 text-sm">Carregando programação...</p>
       </div>
     );
@@ -82,12 +103,13 @@ const App: React.FC = () => {
                 categories={categories}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
+                history={history}
               />
             } 
           />
           <Route 
             path="/watch/:id" 
-            element={<Watch channels={channels} />} 
+            element={<Watch channels={channels} addToHistory={addToHistory} />} 
           />
         </Routes>
       </div>

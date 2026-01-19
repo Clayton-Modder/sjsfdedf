@@ -10,29 +10,45 @@ interface HomeProps {
   categories: Category[];
   favorites: string[];
   toggleFavorite: (id: string) => void;
+  history: string[];
 }
 
-export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite }) => {
+export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite, history }) => {
   const navigate = useNavigate();
   const [activeCategoryId, setActiveCategoryId] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Filter Logic
   const filteredChannels = useMemo(() => {
-    return channels.filter((channel) => {
-      // Search Logic
-      const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+    let result: Channel[] = [];
 
-      // Category Logic
-      if (activeCategoryId === 0) return true; // Todos
-      if (activeCategoryId === -1) {
-        // Favoritos
-        return favorites.includes(channel.id);
-      }
-      return channel.categories.includes(activeCategoryId);
-    });
-  }, [channels, activeCategoryId, searchQuery, favorites]);
+    if (activeCategoryId === -2) {
+      // Recentes: Map history IDs to channels to preserve order (newest first)
+      result = history
+        .map(id => channels.find(c => c.id === id))
+        .filter((c): c is Channel => !!c);
+    } else {
+      // Standard Filtering
+      result = channels.filter((channel) => {
+        // Category Logic
+        if (activeCategoryId === 0) return true; // Todos
+        if (activeCategoryId === -1) {
+          // Favoritos
+          return favorites.includes(channel.id);
+        }
+        return channel.categories.includes(activeCategoryId);
+      });
+    }
+
+    // Apply Search on top of category result
+    if (searchQuery) {
+      result = result.filter(channel => 
+        channel.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    return result;
+  }, [channels, activeCategoryId, searchQuery, favorites, history]);
 
   const handleChannelSelect = (channel: Channel) => {
     navigate(`/watch/${channel.id}`);
@@ -73,16 +89,6 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
            />
         </div>
       </div>
-      
-      {/* Simple Footer */}
-      <footer className="bg-card py-6 border-t border-gray-800 mt-auto">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-500 text-sm">
-            © 2024 MegaTV. Projeto Demo. <br className="sm:hidden"/>
-            Não hospedamos nenhum vídeo.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

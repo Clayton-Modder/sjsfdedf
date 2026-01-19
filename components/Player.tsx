@@ -24,10 +24,11 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   
   // UI States
   const [isCinemaMode, setIsCinemaMode] = useState(false);
-  const [showControls, setShowControls] = useState(false);
+  const [showControls, setShowControls] = useState(true);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Reset state when channel changes
@@ -35,6 +36,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     setHasError(false);
     setIframeKey(prev => prev + 1);
   }, [channel]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        window.clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -53,6 +63,14 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   const toggleCinemaMode = () => {
     setIsCinemaMode(!isCinemaMode);
+    // Force show controls when toggling
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      window.clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = window.setTimeout(() => {
+      if (!isLoading) setShowControls(false);
+    }, 3000);
   };
 
   const handleReload = () => {
@@ -84,44 +102,57 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
       window.clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      setShowControls(false);
+      if (!isLoading) {
+        setShowControls(false);
+      }
     }, 3000);
-  }, []);
+  }, [isLoading]);
 
   return (
-    <div className={`w-full bg-dark transition-all duration-500 ${isCinemaMode ? 'py-0' : 'pt-4 pb-6'}`}>
+    <div className={`transition-all duration-500 ${
+      isCinemaMode 
+        ? 'fixed inset-0 z-50 bg-black flex flex-col justify-center' 
+        : 'w-full bg-dark pt-4 pb-6 relative'
+    }`}>
       <div 
         className={`mx-auto transition-all duration-500 ${
-          isCinemaMode ? 'max-w-full px-0' : 'container px-4 max-w-6xl'
+          isCinemaMode 
+            ? 'w-full h-full' 
+            : 'container px-4 max-w-6xl'
         }`}
       >
-        {/* Header Section - Hidden in Cinema Mode for immersion */}
-        <div className={`flex items-center gap-4 mb-4 text-white transition-all duration-300 ${isCinemaMode ? 'h-0 opacity-0 overflow-hidden mb-0' : 'h-auto opacity-100'}`}>
-             <button 
-                onClick={handleBack}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-                aria-label="Voltar"
-             >
-                <ArrowLeft className="w-6 h-6" />
-             </button>
-             <div>
-                <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-1">{channel.name}</h2>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <p className="text-sm text-gray-300 font-medium">
-                    {channel.currentProgram || "Transmissão Ao Vivo"}
-                  </p>
-                </div>
-             </div>
-        </div>
+        {/* Header Section - Hidden in Cinema Mode */}
+        {!isCinemaMode && (
+          <div className="flex items-center gap-4 mb-4 text-white">
+               <button 
+                  onClick={handleBack}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                  aria-label="Voltar"
+               >
+                  <ArrowLeft className="w-6 h-6" />
+               </button>
+               <div>
+                  <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-1">{channel.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <p className="text-sm text-gray-300 font-medium">
+                      {channel.currentProgram || "Transmissão Ao Vivo"}
+                    </p>
+                  </div>
+               </div>
+          </div>
+        )}
 
         {/* Player Container */}
         <div 
           id="video-player-container" 
+          ref={containerRef}
           className={`
-            relative bg-black overflow-hidden shadow-2xl ring-1 ring-white/10 group
-            transition-all duration-500
-            ${isCinemaMode ? 'rounded-none h-[80vh] sm:h-[85vh]' : 'rounded-xl aspect-video w-full'}
+            relative bg-black overflow-hidden group
+            ${isCinemaMode 
+              ? `w-full h-full ${!showControls ? 'cursor-none' : 'cursor-default'}` 
+              : 'rounded-xl aspect-video w-full shadow-2xl ring-1 ring-white/10'
+            }
           `}
           onMouseMove={handleInteraction}
           onClick={handleInteraction}
@@ -160,7 +191,37 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
             />
           )}
 
-          {/* Player Controls Overlay */}
+          {/* Top Overlay for Cinema Mode Info & Exit */}
+          {isCinemaMode && (
+             <div className={`
+                absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent 
+                transition-opacity duration-300 flex justify-between items-start pointer-events-none
+                ${showControls ? 'opacity-100' : 'opacity-0'}
+             `}>
+                <div className="flex items-center gap-3 pointer-events-auto">
+                   <button onClick={toggleCinemaMode} className="p-2 bg-black/40 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors">
+                      <ArrowLeft className="w-6 h-6" />
+                   </button>
+                   <div>
+                     <h2 className="text-lg font-bold text-white drop-shadow-md">{channel.name}</h2>
+                     <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                        <p className="text-xs text-gray-300 font-medium">{channel.currentProgram || "Ao Vivo"}</p>
+                     </div>
+                   </div>
+                </div>
+                
+                <button 
+                   onClick={toggleCinemaMode}
+                   className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg backdrop-blur-sm shadow-lg transition-all"
+                >
+                   <Minimize2 className="w-4 h-4" />
+                   <span className="font-bold text-sm">Sair do Cinema</span>
+                </button>
+             </div>
+          )}
+
+          {/* Bottom Controls Overlay */}
           <div 
             className={`
               absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent 
@@ -191,11 +252,11 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
              <div className="flex items-center gap-2 pointer-events-auto">
                <button 
                  onClick={toggleCinemaMode}
-                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors hidden sm:flex items-center gap-2"
-                 title={isCinemaMode ? "Modo Padrão" : "Modo Cinema"}
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors flex items-center gap-2"
+                 title={isCinemaMode ? "Sair do Modo Cinema" : "Modo Cinema"}
                >
                  {isCinemaMode ? <Minimize2 className="w-5 h-5" /> : <Expand className="w-5 h-5" />}
-                 <span className="text-xs font-bold">{isCinemaMode ? "Padrão" : "Cinema"}</span>
+                 <span className={`text-xs font-bold ${isCinemaMode ? 'hidden' : 'hidden sm:block'}`}>Cinema</span>
                </button>
 
                <button 
@@ -209,32 +270,25 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           </div>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-6 p-4 bg-card rounded-xl border border-gray-800">
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-             <div>
-               <h3 className="text-lg font-semibold mb-1 text-white">Informações do Canal</h3>
-               <p className="text-gray-400 text-sm">
-                 {channel.description || `Assistindo ${channel.name} ao vivo. A qualidade da transmissão depende da sua conexão com a internet.`}
-               </p>
+        {/* Footer Info - Only visible when NOT in Cinema Mode */}
+        {!isCinemaMode && (
+          <div className="mt-6 p-4 bg-card rounded-xl border border-gray-800">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+               <div>
+                 <h3 className="text-lg font-semibold mb-1 text-white">Informações do Canal</h3>
+                 <p className="text-gray-400 text-sm">
+                   {channel.description || `Assistindo ${channel.name} ao vivo. A qualidade da transmissão depende da sua conexão com a internet.`}
+                 </p>
+               </div>
              </div>
              
-             {isCinemaMode && (
-               <button 
-                onClick={toggleCinemaMode}
-                className="text-primary text-sm font-medium hover:underline whitespace-nowrap"
-               >
-                 Sair do Modo Cinema
-               </button>
-             )}
-           </div>
-           
-           <div className="mt-4 flex gap-4 border-t border-gray-700 pt-4">
-              <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" /> Informar problema
-              </button>
-           </div>
-        </div>
+             <div className="mt-4 flex gap-4 border-t border-gray-700 pt-4">
+                <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" /> Informar problema
+                </button>
+             </div>
+          </div>
+        )}
       </div>
     </div>
   );
