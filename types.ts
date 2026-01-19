@@ -13,6 +13,30 @@ export interface Channel {
   currentProgram?: string;
 }
 
+export interface Team {
+  name: string;
+  image: string;
+}
+
+export interface GameData {
+  league: string;
+  timer: {
+    start: number;
+    end: number;
+  };
+  teams: {
+    home: Team;
+    away: Team;
+  };
+}
+
+export interface Game {
+  title: string;
+  image: string;
+  data: GameData;
+  players: string[];
+}
+
 export interface ApiData {
   categories: Category[];
   channels: Channel[];

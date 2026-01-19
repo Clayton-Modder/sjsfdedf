@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Player } from '../components/Player';
 import { Channel } from '../types';
 import { Tv } from 'lucide-react';
@@ -12,18 +12,35 @@ interface WatchProps {
 export const Watch: React.FC<WatchProps> = ({ channels, addToHistory }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [channel, setChannel] = useState<Channel | null>(null);
 
   useEffect(() => {
+    // 1. Try to find in standard channels list
     const found = channels.find(c => c.id === id);
+    
     if (found) {
       setChannel(found);
       addToHistory(found.id);
-    } else if (channels.length > 0) {
-      // Only redirect if channels are loaded but ID is invalid
+    } 
+    // 2. Check if channel object was passed via navigation state (e.g. from Games)
+    else if (location.state && location.state.channel) {
+      const stateChannel = location.state.channel as Channel;
+      // Ensure the ID matches (basic validation)
+      if (stateChannel.id === id) {
+        setChannel(stateChannel);
+        // We might choose NOT to add transient game channels to history to avoid broken links later,
+        // or we add them but they won't load if revisited directly without state.
+        // For now, let's not add transient items to persistent history to avoid 404s later.
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+    // 3. Fallback: redirect if not found and channels are loaded
+    else if (channels.length > 0) {
       navigate('/', { replace: true });
     }
-  }, [id, channels, navigate, addToHistory]);
+  }, [id, channels, navigate, addToHistory, location.state]);
 
   if (!channel) {
     return (

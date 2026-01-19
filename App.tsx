@@ -59,12 +59,13 @@ const App: React.FC = () => {
       try {
         const data = await fetchChannels();
         
-        // Inject "Favoritos" and "Recentes" categories
+        // Inject "Favoritos", "Recentes", and "Jogos" categories
         const todosCat = data.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
         const otherCats = data.categories.filter(c => c.id !== 0);
         
         const enhancedCategories = [
           todosCat,
+          { id: -3, name: "Jogos" }, // New Games Category
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats

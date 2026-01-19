@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { CategoryList } from '../components/CategoryList';
 import { ChannelGrid } from '../components/ChannelGrid';
-import { Channel, Category } from '../types';
+import { GameList } from '../components/GameList';
+import { Channel, Category, Game } from '../types';
+import { fetchGames } from '../services/dataService';
 
 interface HomeProps {
   channels: Channel[];
@@ -17,9 +19,30 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
   const navigate = useNavigate();
   const [activeCategoryId, setActiveCategoryId] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  
+  // Games State
+  const [games, setGames] = useState<Game[]>([]);
+  const [loadingGames, setLoadingGames] = useState<boolean>(false);
+  const [gamesLoaded, setGamesLoaded] = useState<boolean>(false);
 
-  // Filter Logic
+  // Fetch games when category is selected
+  useEffect(() => {
+    if (activeCategoryId === -3 && !gamesLoaded) {
+      setLoadingGames(true);
+      fetchGames()
+        .then(data => {
+          setGames(data);
+          setGamesLoaded(true);
+        })
+        .finally(() => setLoadingGames(false));
+    }
+  }, [activeCategoryId, gamesLoaded]);
+
+  // Filter Logic for Channels
   const filteredChannels = useMemo(() => {
+    // If we are in "Jogos" mode, channel filtering doesn't matter much for the main grid
+    if (activeCategoryId === -3) return [];
+
     let result: Channel[] = [];
 
     if (activeCategoryId === -2) {
@@ -50,12 +73,25 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
     return result;
   }, [channels, activeCategoryId, searchQuery, favorites, history]);
 
+  // Filter Logic for Games (Search only)
+  const filteredGames = useMemo(() => {
+    if (activeCategoryId !== -3) return [];
+    if (!searchQuery) return games;
+    return games.filter(g => 
+      g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      g.data.league.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.data.teams.home.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.data.teams.away.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [games, activeCategoryId, searchQuery]);
+
   const handleChannelSelect = (channel: Channel) => {
     navigate(`/watch/${channel.id}`);
   };
 
   const handleCategorySelect = (id: number) => {
     setActiveCategoryId(id);
+    setSearchQuery(""); // Clear search on category change
   };
 
   return (
@@ -81,12 +117,16 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
               </h2>
            </div>
            
-           <ChannelGrid 
-             channels={filteredChannels} 
-             onSelectChannel={handleChannelSelect}
-             favorites={favorites}
-             onToggleFavorite={toggleFavorite}
-           />
+           {activeCategoryId === -3 ? (
+             <GameList games={filteredGames} loading={loadingGames} />
+           ) : (
+             <ChannelGrid 
+               channels={filteredChannels} 
+               onSelectChannel={handleChannelSelect}
+               favorites={favorites}
+               onToggleFavorite={toggleFavorite}
+             />
+           )}
         </div>
       </div>
     </div>
