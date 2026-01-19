@@ -2,89 +2,109 @@ import { ApiData, Game } from '../types';
 import { initialData } from './initialData';
 
 const CACHE_KEY = 'megacanaistv_data_v2';
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hora
 
 interface CachedData {
   timestamp: number;
   data: ApiData;
 }
 
-// Static Fallback Data removed as requested
-const FALLBACK_GAMES: Game[] = [];
-
+// ============================
+// CANAIS (CACHE + FALLBACK)
+// ============================
 export const fetchChannels = async (): Promise<ApiData> => {
   try {
-    // 1. Check Local Storage
+    // 1️⃣ CACHE
     const cachedString = localStorage.getItem(CACHE_KEY);
-    
+
     if (cachedString) {
-      try {
-        const cached: CachedData = JSON.parse(cachedString);
-        const now = Date.now();
-        
-        // If cache is valid (less than 1 hour old), return it
-        if (now - cached.timestamp < CACHE_DURATION) {
-          // console.log("Serving from local cache");
-          return Promise.resolve(cached.data);
-        }
-      } catch (e) {
-        console.warn("Cache parse error, refreshing data");
-        localStorage.removeItem(CACHE_KEY);
+      const cached: CachedData = JSON.parse(cachedString);
+      if (Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
       }
     }
 
-    // 2. Simulate Network Request (Using initialData)
+    // 2️⃣ DADOS INICIAIS
     const freshData = initialData;
 
-    // 3. Save to Cache
-    try {
-      const cachePayload: CachedData = {
+    // 3️⃣ SALVA CACHE
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
         timestamp: Date.now(),
         data: freshData
-      };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
-    } catch (e) {
-      console.error("Failed to save to cache (quota exceeded?)", e);
-    }
+      })
+    );
 
-    return Promise.resolve(freshData);
+    return freshData;
   } catch (error) {
-    console.error("Failed to fetch channels:", error);
-    return {
-      categories: [],
-      channels: []
-    };
+    console.error('Erro ao buscar canais:', error);
+    return { categories: [], channels: [] };
   }
 };
 
+// ============================
+// JOGOS (API REMOTA)
+// ============================
 export const fetchGames = async (): Promise<Game[]> => {
   try {
+    // DATA ATUAL (DDMMYYYY)
     const date = new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateString = `${day}${month}${year}`;
-    
-    // Updated URL to use the new source provided by the user
-    // Direct fetch without proxy as requested
-    const targetUrl = `https://megacanaisonline.space/api/scramnpjogos.php?day=${dateString}`;
-    
-    const response = await fetch(targetUrl);
-    
+
+    // API PHP (TEM QUE TER CORS LIBERADO)
+    const url = `https://megacanaisonline.space/api/scramnpjogos.php?day=${dateString}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
     if (!response.ok) {
-       throw new Error(`API error: ${response.status}`);
+      throw new Error(`Erro API: ${response.status}`);
     }
 
-    const data = await response.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return data;
+    const json = await response.json();
+
+    // ❌ NÃO É ARRAY DIRETO
+    if (!json.status || !Array.isArray(json.data)) {
+      console.warn('API retornou formato inválido');
+      return [];
     }
-    
-    return [];
-    
+
+    // ✅ ADAPTA PARA O TIPO Game
+    const games: Game[] = json.data.map((item: any) => ({
+      title: item.titulo,
+      image: item.capa,
+      data: {
+        league: item.liga,
+        timer: {
+          start: item.inicio,
+          end: item.fim
+        },
+        teams: {
+          home: {
+            name: item.times?.casa?.nome ?? '',
+            image: item.times?.casa?.logo ?? ''
+          },
+          away: {
+            name: item.times?.fora?.nome ?? '',
+            image: item.times?.fora?.logo ?? ''
+          }
+        }
+      },
+      players: Array.isArray(item.players) ? item.players : []
+    }));
+
+    return games;
+
   } catch (error) {
-    // Log helpful info for debugging but don't crash app
-    console.warn("Could not fetch live games.", error);
+    console.warn('Não foi possível carregar os jogos:', error);
     return [];
   }
 };
