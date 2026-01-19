@@ -186,7 +186,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
               className="w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-presentation"
+              sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
               onLoad={handleIframeLoad}
               title={`Player ${channel.name}`}
             />
