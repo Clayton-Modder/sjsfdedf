@@ -1,26 +1,55 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Header } from './components/Header';
-import { CategoryList } from './components/CategoryList';
-import { Player } from './components/Player';
-import { ChannelGrid } from './components/ChannelGrid';
+import React, { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { fetchChannels } from './services/dataService';
 import { Channel, Category } from './types';
 import { Loader2 } from 'lucide-react';
+import { Home } from './pages/Home';
+import { Watch } from './pages/Watch';
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategoryId, setActiveCategoryId] = useState<number>(0);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
+  
+  // Favorites State with localStorage persistence
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Error loading favorites", e);
+      return [];
+    }
+  });
+
+  const toggleFavorite = (channelId: string) => {
+    setFavorites(prev => {
+      const newFavs = prev.includes(channelId)
+        ? prev.filter(id => id !== channelId)
+        : [...prev, channelId];
+      
+      localStorage.setItem('favorites', JSON.stringify(newFavs));
+      return newFavs;
+    });
+  };
 
   // Initial Data Fetch
   useEffect(() => {
     const loadData = async () => {
       try {
         const data = await fetchChannels();
-        setCategories(data.categories);
+        
+        // Inject "Favoritos" category after "Todos" (assuming Todos is id 0)
+        const todosCat = data.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
+        const otherCats = data.categories.filter(c => c.id !== 0);
+        
+        const enhancedCategories = [
+          todosCat,
+          { id: -1, name: "Favoritos" },
+          ...otherCats
+        ];
+
+        setCategories(enhancedCategories);
         setChannels(data.channels);
       } catch (error) {
         console.error("Failed to load data", error);
@@ -30,25 +59,6 @@ const App: React.FC = () => {
     };
     loadData();
   }, []);
-
-  // Filter Logic
-  const filteredChannels = useMemo(() => {
-    return channels.filter((channel) => {
-      const matchesCategory = activeCategoryId === 0 || channel.categories.includes(activeCategoryId);
-      const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [channels, activeCategoryId, searchQuery]);
-
-  const handleChannelSelect = (channel: Channel) => {
-    setSelectedChannel(channel);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCategorySelect = (id: number) => {
-    setActiveCategoryId(id);
-    // Reset search when changing category for better UX, or keep it? Keeping it feels more standard.
-  };
 
   if (isAppLoading) {
     return (
@@ -61,60 +71,27 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-dark">
-      {/* Header */}
-      <Header 
-        searchTerm={searchQuery} 
-        onSearch={setSearchQuery} 
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col">
-        {/* Player Section - Conditionally Rendered */}
-        {selectedChannel && (
-          <Player 
-            channel={selectedChannel} 
-            onClose={() => setSelectedChannel(null)} 
+    <HashRouter>
+      <div className="min-h-screen bg-dark text-white font-sans">
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <Home 
+                channels={channels} 
+                categories={categories}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+              />
+            } 
           />
-        )}
-
-        {/* Categories Bar */}
-        <CategoryList 
-          categories={categories} 
-          activeCategoryId={activeCategoryId} 
-          onSelectCategory={handleCategorySelect} 
-        />
-
-        {/* Channels Grid */}
-        <div className="flex-1">
-          <div className="container mx-auto px-4 py-4">
-             {/* Breadcrumb / Title */}
-             <div className="flex items-center gap-2 mb-2">
-                <div className="w-1 h-6 bg-primary rounded-full"></div>
-                <h2 className="text-xl font-bold text-white">
-                  {categories.find(c => c.id === activeCategoryId)?.name || 'Canais'}
-                  {searchQuery && <span className="text-gray-400 font-normal text-base ml-2">- Buscando por "{searchQuery}"</span>}
-                </h2>
-             </div>
-             
-             <ChannelGrid 
-               channels={filteredChannels} 
-               onSelectChannel={handleChannelSelect} 
-             />
-          </div>
-        </div>
-      </main>
-
-      {/* Simple Footer */}
-      <footer className="bg-card py-6 border-t border-gray-800 mt-auto">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-500 text-sm">
-            © 2024 MegaTV. Projeto Demo. <br className="sm:hidden"/>
-            Não hospedamos nenhum vídeo.
-          </p>
-        </div>
-      </footer>
-    </div>
+          <Route 
+            path="/watch/:id" 
+            element={<Watch channels={channels} />} 
+          />
+        </Routes>
+      </div>
+    </HashRouter>
   );
 };
 

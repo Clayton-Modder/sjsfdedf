@@ -9,6 +9,8 @@ export interface Channel {
   image: string;
   categories: number[];
   url: string;
+  description?: string;
+  currentProgram?: string;
 }
 
 export interface ApiData {
