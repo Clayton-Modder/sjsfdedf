@@ -3,7 +3,7 @@ import { Download, Cast, X } from 'lucide-react';
 
 interface InstallAppModalProps {
   isOpen: boolean;
-  onClose: () => void; // Trigger native cast
+  onClose: () => void; // Trigger native cast (Unused in UI now, but kept for interface compatibility)
   onDismiss: () => void; // Just close modal
   onConfirm: () => void; // Download app
 }
@@ -45,13 +45,6 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
             >
               <Download className="w-5 h-5" />
               Baixar App (Recomendado)
-            </button>
-            
-            <button
-              onClick={onClose}
-              className="w-full py-3 px-4 bg-transparent border-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-colors text-sm"
-            >
-              Continuar com Navegador
             </button>
           </div>
         </div>

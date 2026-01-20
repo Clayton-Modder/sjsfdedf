@@ -160,7 +160,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
                 </div>
                 <div>
                   <p className={`font-semibold ${isConnected ? 'text-blue-400' : 'text-gray-900 dark:text-white'}`}>
-                    Google Cast / App Parceiro
+                    Google Cast / Recomendado
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {isConnected ? 'Conectado à TV' : 'Conectar ou baixar app'}
