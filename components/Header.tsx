@@ -13,10 +13,14 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-dark/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-300">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => {
-          navigate('/');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}>
+        <div 
+          className="flex items-center gap-2 flex-shrink-0 cursor-pointer" 
+          onClick={() => {
+            navigate('/');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          title="Página Inicial"
+        >
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
             <Tv className="text-white w-6 h-6" />
           </div>
@@ -26,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
         </div>
 
         <div className="flex-1 max-w-xl flex items-center gap-2 sm:gap-4 justify-end">
-          <div className="flex-1 relative max-w-md">
+          <div className="flex-1 relative max-w-md" title="Buscar canais">
             <input
               type="text"
               placeholder="Buscar canais..."
@@ -40,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
           <button 
             onClick={() => navigate('/settings')}
             className="p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-            title="Configurações"
+            title="Configurações e Ajustes"
           >
             <Settings className="w-6 h-6" />
           </button>

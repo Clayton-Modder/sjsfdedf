@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   Smartphone,
   Wifi,
-  Loader2
+  Loader2,
+  Trash2,
+  LifeBuoy
 } from 'lucide-react';
 import { initializeCastApi, requestSession, getCastContext, endCurrentSession, CAST_STATES } from '../services/castService';
 import { InstallAppModal } from '../components/InstallAppModal';
@@ -92,6 +94,27 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
     }
   };
 
+  const handleClearCache = () => {
+    if (window.confirm("Isso irá apagar favoritos, histórico e dados temporários para corrigir problemas. O app será recarregado. Continuar?")) {
+      localStorage.clear();
+      sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => {
+            caches.delete(name);
+          });
+        });
+      }
+      window.location.reload();
+    }
+  };
+
+  const handleSupport = () => {
+    // Redirecionamento interno AppCreator24
+    // Isso aciona a navegação nativa do WebView para a seção de suporte
+    window.location.href = "go:sup";
+  };
+
   const isConnected = castState === CAST_STATES.CONNECTED;
   const isConnecting = castState === CAST_STATES.CONNECTING;
 
@@ -109,6 +132,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
           <button 
             onClick={() => navigate('/')}
             className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-800 dark:text-white"
+            title="Voltar para a página inicial"
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -125,6 +149,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
             <div 
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={toggleTheme}
+              title={`Mudar para modo ${isDark ? 'claro' : 'escuro'}`}
             >
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-purple-500/10 text-purple-400' : 'bg-orange-500/10 text-orange-500'}`}>
@@ -153,6 +178,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
                 ${isConnected ? 'bg-blue-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
               `}
               onClick={handleCastClick}
+              title="Configurar transmissão para TV"
             >
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isConnected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40' : 'bg-blue-500/10 text-blue-500'}`}>
@@ -171,13 +197,19 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
             </div>
 
             <div className="p-4 bg-gray-50 dark:bg-gray-900/50 flex gap-4 overflow-x-auto">
-                <div className="min-w-[100px] p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center gap-2 text-center">
+                <div 
+                  className="min-w-[100px] p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center gap-2 text-center"
+                  title="Dispositivo atual em uso"
+                >
                     <Smartphone className="w-6 h-6 text-gray-400" />
                     <span className="text-xs font-medium text-gray-500">Este Celular</span>
                 </div>
-                 <div className={`min-w-[100px] p-3 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 text-center 
-                    ${isConnected ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-200 dark:border-gray-700'}
-                 `}>
+                 <div 
+                    className={`min-w-[100px] p-3 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 text-center 
+                      ${isConnected ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-200 dark:border-gray-700'}
+                    `}
+                    title={isConnected ? "TV Conectada" : "Nenhuma TV conectada"}
+                 >
                     <Wifi className={`w-6 h-6 ${isConnected ? 'text-blue-500' : 'text-gray-400'}`} />
                     <span className="text-xs font-medium text-gray-500">
                         {isConnected ? 'TV Conectada' : 'Buscar TV'}
@@ -187,8 +219,59 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
           </div>
         </section>
 
+        {/* System & Support */}
+        <section className="mb-8">
+          <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Sistema & Suporte</h2>
+          <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+            
+            {/* Clear Cache */}
+            <div 
+              className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={handleClearCache}
+              title="Limpar dados salvos e recarregar o aplicativo"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500/10 text-red-500">
+                   <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">Limpar Cache</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Corrigir problemas de carregamento
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+
+            {/* Support */}
+            <div 
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={handleSupport}
+              title="Entrar em contato com o suporte"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500/10 text-green-500">
+                   <LifeBuoy className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">Suporte</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Fale com nossa equipe
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+
+          </div>
+        </section>
+
         <div className="flex flex-col items-center justify-center text-center mt-10 text-gray-400 text-sm gap-2">
-           <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-2">
+           <div 
+             className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-2"
+             title="Verificado e Seguro"
+           >
              <ShieldCheck className="w-6 h-6 text-gray-500" />
            </div>
            <p className="font-bold text-gray-600 dark:text-gray-300">Mega Canais TV v2.2.0</p>
