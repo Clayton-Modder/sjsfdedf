@@ -1,0 +1,98 @@
+[
+  {
+    "id": "RádioJornalFM",
+    "name": "Rádio Jornal 91.3 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio13492_1693568264.png",
+    "url": "https://str1.streamhostpg.com.br:8124/stream",
+    "city": "A voz do povo!",
+    "category": "A voz do povo!"
+  },
+  {
+    "id": "RadioJovemPanFM",
+    "name": "Radio Jovem Pan 100.9 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio8829_1708517690.png",
+    "url": "https://stream.zeno.fm/c45wbq2us3buv",
+    "city": "São Paulo - SP",
+    "category": "A radio número 1 do Brasil!"
+  },
+  {
+    "id": "RadioFM",
+    "name": "Rádio 93 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio98_1551111060.jpg",
+    "url": "https://5a2b083e9f360.streamlock.net/93fmrr/93fmrr.stream/playlist.m3u8",
+    "city": "São Paulo - SP",
+    "category": "A nossa rádio!"
+  },
+  {
+    "id": "RádioCBN",
+    "name": "Rádio CBN São Paulo 90.5 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio8816_1573682720.jpg",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/CBN_SPAAC.aac?dist=radioscombr",
+    "city": "São Paulo / SP - Brasil",
+    "category": "A rádio que toca notícia"
+  },
+  {
+    "id": "RádioEvangelizarFM",
+    "name": "Rádio Evangelizar 90.7 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio13128_1739186745.jpg",
+    "url": "https://8241.brasilstream.com.br/stream?origem=radios.com.br",
+    "city": "Curitiba / PR - Brasil",
+    "category": "Evangelizar é preciso!"
+  },
+  {
+    "id": "RádioBandeirantesFM",
+    "name": "Rádio Bandeirantes 90.9 FM 86.3 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio10410_1740662706.jpg",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RadioBandeirantesAAC.m3u8?dist=bandsite",
+    "city": "São Paulo - SP",
+    "category": "Fechada com você, fechada com a verdade!"
+  },
+  {
+    "id": "RádioItatiaiaFM",
+    "name": "Rádio Itatiaia 610 AM 95.7 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio14_1646746883.jpeg",
+    "url": "https://8903.brasilstream.com.br/stream",
+    "city": "São Paulo - SP",
+    "category": "A Rádio de Minas"
+  },
+  {
+    "id": "bandnews",
+    "name": "Rádio BandNews SP 96.9 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio24477_1579261235.jpg",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/BANDNEWSFM_SPAAC.aac?dist=radios.com.br",
+    "city": "São Paulo / SP - Brasil",
+    "category": "Em um segundo tudo pode mudar!"
+  },
+  {
+    "id": "transamerica",
+    "name": "Rádio Transamérica 99.7 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio14885_1760365336.png",
+    "url": "https://radio02.zas.media/proxy/trans99/stream",
+    "city": "Balneário Camboriú / SC - Brasil",
+    "category": "Onde você estiver"
+  },
+  {
+    "id": "energia",
+    "name": "Energia FM",
+    "image": "https://www.97fm.com.br/imagens/layout/topo-logotipo.png",
+    "url": "https://streaming.inweb.com.br/energia",
+    "city": "São Paulo - SP",
+    "category": "Eletrônica"
+  },
+  {
+    "id": "natica",
+    "name": "Rádio Nativa 95.3 FM",
+    "image": "https://img.radios.com.br/radio/lg/radio14040_1677589865.png",
+    "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/NATIVA_SPAAC.aac?dist=radios.com.br",
+    "city": "São Paulo - SP",
+    "category": "A Nativa é tudo e muito mais!"
+  },
+  {
+    "id": "gazeta",
+    "name": "Gazeta FM",
+    "image": "https://gazetafm.com.br/wp-content/themes/wp-theme-gazeta-fm/assets/img/logo.webp",
+    "url": "https://gazetafmsite.crossradio.com.br:19878/stream/1;",
+    "city": "São Paulo - SP",
+    "category": "São Paulo - SP | Brasil"
+  }
+]

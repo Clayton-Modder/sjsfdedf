@@ -37,6 +37,15 @@ export interface Game {
   players: string[];
 }
 
+export interface Radio {
+  id: string;
+  name: string;
+  image: string;
+  url: string;
+  city: string;
+  category: string;
+}
+
 export interface ApiData {
   categories: Category[];
   channels: Channel[];

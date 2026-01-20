@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { fetchChannels } from './services/dataService';
-import { Channel, Category } from './types';
+import { fetchChannels, fetchRadios } from './services/dataService';
+import { Channel, Category, Radio } from './types';
 import { Loader2 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
@@ -11,6 +11,7 @@ import { RemoteControl } from './components/RemoteControl';
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [radios, setRadios] = useState<Radio[]>([]);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
   
   // Theme State
@@ -82,22 +83,27 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await fetchChannels();
+        const [channelsData, radiosData] = await Promise.all([
+          fetchChannels(),
+          fetchRadios()
+        ]);
         
-        // Inject "Favoritos", "Recentes", and "Futebol" categories
-        const todosCat = data.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
-        const otherCats = data.categories.filter(c => c.id !== 0);
+        // Inject "Favoritos", "Recentes", "Futebol" and "Rádios" categories
+        const todosCat = channelsData.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
+        const otherCats = channelsData.categories.filter(c => c.id !== 0);
         
         const enhancedCategories = [
           todosCat,
           { id: -3, name: "Futebol Ao vivo" },
+          { id: -4, name: "Rádios Online" },
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats
         ];
 
         setCategories(enhancedCategories);
-        setChannels(data.channels);
+        setChannels(channelsData.channels);
+        setRadios(radiosData);
       } catch (error) {
         console.error("Failed to load data", error);
       } finally {
@@ -131,12 +137,13 @@ const App: React.FC = () => {
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
                 history={history}
+                radios={radios}
               />
             } 
           />
           <Route 
             path="/watch/:id" 
-            element={<Watch channels={channels} addToHistory={addToHistory} />} 
+            element={<Watch channels={channels} radios={radios} addToHistory={addToHistory} />} 
           />
           <Route 
             path="/settings" 

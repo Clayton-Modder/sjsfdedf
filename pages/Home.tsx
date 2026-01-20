@@ -4,7 +4,8 @@ import { Header } from '../components/Header';
 import { CategoryList } from '../components/CategoryList';
 import { ChannelGrid } from '../components/ChannelGrid';
 import { GameList } from '../components/GameList';
-import { Channel, Category, Game } from '../types';
+import { RadioList } from '../components/RadioList';
+import { Channel, Category, Game, Radio } from '../types';
 import { fetchGames } from '../services/dataService';
 
 interface HomeProps {
@@ -13,9 +14,10 @@ interface HomeProps {
   favorites: string[];
   toggleFavorite: (id: string) => void;
   history: string[];
+  radios: Radio[];
 }
 
-export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite, history }) => {
+export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, toggleFavorite, history, radios }) => {
   const navigate = useNavigate();
   const [activeCategoryId, setActiveCategoryId] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -40,8 +42,8 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
 
   // Filter Logic for Channels
   const filteredChannels = useMemo(() => {
-    // If we are in "Jogos" mode, channel filtering doesn't matter much for the main grid
-    if (activeCategoryId === -3) return [];
+    // If we are in "Jogos" or "Rádios" mode, channel filtering doesn't matter much for the main grid
+    if (activeCategoryId === -3 || activeCategoryId === -4) return [];
 
     let result: Channel[] = [];
 
@@ -91,6 +93,19 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
     });
   }, [games, activeCategoryId, searchQuery]);
 
+  // Filter Logic for Radios
+  const filteredRadios = useMemo(() => {
+    if (activeCategoryId !== -4) return [];
+    if (!searchQuery) return radios;
+
+    const query = searchQuery.toLowerCase();
+    return radios.filter(r => 
+        r.name.toLowerCase().includes(query) || 
+        r.city.toLowerCase().includes(query) ||
+        r.category.toLowerCase().includes(query)
+    );
+  }, [radios, activeCategoryId, searchQuery]);
+
   const handleChannelSelect = (channel: Channel) => {
     navigate(`/watch/${channel.id}`);
   };
@@ -125,6 +140,8 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
            
            {activeCategoryId === -3 ? (
              <GameList games={filteredGames} loading={loadingGames} />
+           ) : activeCategoryId === -4 ? (
+             <RadioList radios={filteredRadios} />
            ) : (
              <ChannelGrid 
                channels={filteredChannels} 

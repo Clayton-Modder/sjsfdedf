@@ -1,4 +1,4 @@
-import { ApiData, Game } from '../types';
+import { ApiData, Game, Radio } from '../types';
 import { initialData } from './initialData';
 
 const CACHE_KEY = 'megacanaistv_data_v2';
@@ -105,6 +105,23 @@ export const fetchGames = async (): Promise<Game[]> => {
 
   } catch (error) {
     console.warn('Não foi possível carregar os jogos:', error);
+    return [];
+  }
+};
+
+// ============================
+// RÁDIOS (ARQUIVO LOCAL/PUBLIC)
+// ============================
+export const fetchRadios = async (): Promise<Radio[]> => {
+  try {
+    const response = await fetch('/radios.json');
+    if (!response.ok) {
+      throw new Error('Falha ao carregar radios.json');
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar rádios:', error);
     return [];
   }
 };

@@ -11,7 +11,11 @@ import {
   Minimize2,
   Sparkles,
   ExternalLink,
-  Cast
+  Cast,
+  Radio,
+  Music2,
+  Play,
+  Pause
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
@@ -38,24 +42,32 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const [showControls, setShowControls] = useState(true);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false); // New state for Play/Pause
+  
   const controlsTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Audio Ref
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Cast State
   const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
   const [showInstallModal, setShowInstallModal] = useState(false);
+
+  const isRadio = channel.categories.includes(-4);
 
   useEffect(() => {
     // Reset state when channel changes
     setIsLoading(true);
     setHasError(false);
     setIframeKey(prev => prev + 1);
+    setIsPlaying(false);
     
     // Reset AI state
     setAiDescription(null);
     setAiSources([]);
     
-    // Fetch AI Description
+    // Fetch AI Description (Skip for radios usually)
     const fetchDescription = async () => {
       setLoadingAi(true);
       const result = await generateChannelDescription(channel.name);
@@ -91,6 +103,14 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   }, [channel]);
 
+  // Handle Audio Volume
+  useEffect(() => {
+    if (audioRef.current) {
+        audioRef.current.volume = volume / 100;
+        audioRef.current.muted = isMuted;
+    }
+  }, [volume, isMuted]);
+
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -100,8 +120,33 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     };
   }, []);
 
-  const handleIframeLoad = () => {
+  const handleMediaLoad = () => {
     setIsLoading(false);
+    if (isRadio && audioRef.current) {
+        // Attempt to play and update state
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                setIsPlaying(true);
+            }).catch(error => {
+                console.log("Autoplay prevented:", error);
+                setIsPlaying(false);
+            });
+        }
+    }
+  };
+
+  const togglePlay = (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      if (audioRef.current) {
+          if (isPlaying) {
+              audioRef.current.pause();
+              setIsPlaying(false);
+          } else {
+              audioRef.current.play();
+              setIsPlaying(true);
+          }
+      }
   };
 
   const handleFullscreen = () => {
@@ -131,6 +176,10 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     setIsLoading(true);
     setHasError(false);
     setIframeKey(prev => prev + 1);
+    if (audioRef.current) {
+        audioRef.current.load();
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
   };
 
   const handleBack = () => {
@@ -156,11 +205,13 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
       window.clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (!isLoading) {
-        setShowControls(false);
+      if (!isLoading && (isPlaying || !isRadio)) { 
+          // Only hide if playing (or if it's video mode)
+          // If radio is paused, keep controls visible
+          setShowControls(false);
       }
     }, 3000);
-  }, [isLoading]);
+  }, [isLoading, isPlaying, isRadio]);
 
   const handleCastClick = () => {
     setShowInstallModal(true);
@@ -229,9 +280,9 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                <div>
                   <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-1">{channel.name}</h2>
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    {isRadio && isPlaying && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
                     <p className="text-sm text-gray-300 font-medium">
-                      {channel.currentProgram || "Transmissão Ao Vivo"}
+                      {channel.currentProgram || (isRadio ? "Rádio Ao Vivo" : "Transmissão Ao Vivo")}
                     </p>
                   </div>
                </div>
@@ -256,7 +307,9 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10 text-white">
               <Loader2 className="w-12 h-12 animate-spin text-primary mb-3" />
-              <p className="text-base font-medium text-gray-300">Carregando sinal...</p>
+              <p className="text-base font-medium text-gray-300">
+                  {isRadio ? 'Sintonizando Rádio...' : 'Carregando sinal...'}
+              </p>
             </div>
           )}
 
@@ -275,16 +328,116 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                </button>
              </div>
           ) : (
-            <iframe
-              key={iframeKey}
-              src={channel.url}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
-              onLoad={handleIframeLoad}
-              title={`Player ${channel.name}`}
-            />
+            <>
+              {isRadio ? (
+                  // AUDIO PLAYER VISUALIZATION
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-black flex flex-col items-center justify-center overflow-hidden">
+                      
+                      {/* Animated Background Pulse */}
+                      <div className={`absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-20'}`}></div>
+                      
+                      {/* Dynamic "Sound Waves" Background */}
+                      {isPlaying && (
+                         <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                            <div className="w-[120%] h-[100px] bg-primary blur-[80px] animate-pulse"></div>
+                         </div>
+                      )}
+
+                      {/* Vinyl/Logo Container */}
+                      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pb-12">
+                          
+                          {/* Main Disc */}
+                          <div className={`
+                                relative w-48 h-48 md:w-64 md:h-64 rounded-full 
+                                bg-gray-950 border-8 border-gray-800 shadow-2xl overflow-hidden 
+                                flex items-center justify-center
+                                transition-transform duration-[20s] ease-linear
+                                ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}
+                          `}>
+                              {/* Inner Ring details for vinyl look */}
+                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-2"></div>
+                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-4"></div>
+                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-8"></div>
+                              
+                              <img 
+                                src={channel.image} 
+                                alt={channel.name} 
+                                className="w-2/3 h-2/3 object-contain z-10 rounded-full bg-white/5 backdrop-blur-sm p-2" 
+                                onError={(e) => (e.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png')}
+                              />
+                          </div>
+
+                          {/* Equalizer Visualizer (Simulated) */}
+                          <div className="h-12 flex items-end gap-1.5 mt-8 mb-4">
+                              {[...Array(8)].map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`w-1.5 bg-primary rounded-t-full transition-all duration-300 ease-in-out ${isPlaying ? 'animate-[bounce_0.8s_infinite]' : 'h-1'}`}
+                                    style={{ 
+                                        animationDelay: `${i * 0.1}s`,
+                                        height: isPlaying ? undefined : '4px',
+                                        animationDuration: `${0.6 + (i % 3) * 0.2}s`
+                                    }}
+                                  ></div>
+                              ))}
+                          </div>
+                          
+                          {/* Live Badge */}
+                          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+                              {isPlaying ? (
+                                  <>
+                                      <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                      </span>
+                                      <span className="text-xs font-bold text-white tracking-widest uppercase">No Ar</span>
+                                  </>
+                              ) : (
+                                  <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Pausado</span>
+                              )}
+                          </div>
+                      </div>
+
+                      {/* Play/Pause Overlay - Center of Screen */}
+                      <div className={`absolute inset-0 flex items-center justify-center z-20 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
+                          <button 
+                            onClick={togglePlay}
+                            className="pointer-events-auto w-16 h-16 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 transition-all hover:scale-110 active:scale-95 group"
+                          >
+                             {isPlaying ? (
+                                 <Pause className="w-8 h-8 text-white fill-current" />
+                             ) : (
+                                 <Play className="w-8 h-8 text-white fill-current ml-1" />
+                             )}
+                          </button>
+                      </div>
+
+                      <audio
+                        ref={audioRef}
+                        key={iframeKey}
+                        autoPlay
+                        onCanPlay={handleMediaLoad}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onError={() => setHasError(true)}
+                        src={channel.url}
+                        className="hidden" 
+                      />
+                  </div>
+              ) : (
+                  // VIDEO PLAYER (IFRAME)
+                  <iframe
+                    key={iframeKey}
+                    src={channel.url}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
+                    onLoad={handleMediaLoad}
+                    title={`Player ${channel.name}`}
+                  />
+              )}
+            </>
           )}
 
           {/* Top Overlay for Cinema Mode Info & Exit */}
@@ -301,8 +454,8 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                    <div>
                      <h2 className="text-lg font-bold text-white drop-shadow-md">{channel.name}</h2>
                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                        <p className="text-xs text-gray-300 font-medium">{channel.currentProgram || "Ao Vivo"}</p>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isRadio ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                        <p className="text-xs text-gray-300 font-medium">{channel.currentProgram || (isRadio ? "Rádio Ao Vivo" : "Ao Vivo")}</p>
                      </div>
                    </div>
                 </div>
@@ -322,11 +475,20 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
             className={`
               absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent 
               transition-opacity duration-300 flex items-end justify-between gap-4
-              ${showControls || isLoading ? 'opacity-100' : 'opacity-0'}
+              ${showControls || isLoading || (isRadio && !isPlaying) ? 'opacity-100' : 'opacity-0'}
             `}
           >
              {/* Left Controls (Volume) */}
              <div className="flex items-center gap-3">
+                {isRadio && (
+                    <button 
+                        onClick={togglePlay} 
+                        className="p-2 bg-white text-black rounded-full hover:bg-gray-200 transition-colors pointer-events-auto mr-2"
+                    >
+                        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                    </button>
+                )}
+
                 <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto">
                   <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
                     {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -342,6 +504,13 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                     />
                   </div>
                 </div>
+                
+                {isRadio && (
+                    <div className="hidden sm:flex items-center gap-2 text-white/80 text-xs font-mono ml-2">
+                        <Music2 className="w-4 h-4 text-primary" />
+                        <span>Stereo HQ</span>
+                    </div>
+                )}
              </div>
 
              {/* Right Controls (Modes) */}
@@ -433,7 +602,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
                <div className="flex gap-4 pt-2">
                   <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" /> Informar problema no vídeo
+                    <AlertCircle className="w-4 h-4" /> Informar problema no {isRadio ? 'áudio' : 'vídeo'}
                   </button>
                </div>
 
