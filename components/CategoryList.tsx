@@ -35,7 +35,6 @@ const getCategoryIcon = (id: number): LucideIcon => {
     case -2: return History;      // Recentes
     case -3: return Trophy;       // Futebol Ao vivo
     case -4: return Radio;        // Rádios
-    case -5: return Calendar;     // Programação TV
     case 8: return Flame;         // BBB
     case 6: return Tv;            // TV Aberta
     case 1: return Trophy;        // Esportes

@@ -91,7 +91,7 @@ const App: React.FC = () => {
           fetchRadios()
         ]);
         
-        // Inject "Favoritos", "Recentes", "Futebol", "Rádios" and "Programação TV" categories
+        // Inject "Favoritos", "Recentes", "Futebol", "Rádios" categories
         const todosCat = channelsData.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
         const otherCats = channelsData.categories.filter(c => c.id !== 0);
         
@@ -99,7 +99,6 @@ const App: React.FC = () => {
           todosCat,
           { id: -3, name: "Futebol Ao vivo" },
           { id: -4, name: "Rádios Online" },
-          { id: -5, name: "Programação TV" },
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats
