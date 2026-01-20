@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
-import { castMedia, requestSession, getCastSession } from '../services/castService';
+import { castMedia, requestSession, getCastContext, CAST_STATES, initializeCastApi } from '../services/castService';
 
 interface PlayerProps {
   channel: Channel;
@@ -40,6 +40,9 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const controlsTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Cast State
+  const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
+
   useEffect(() => {
     // Reset state when channel changes
     setIsLoading(true);
@@ -63,7 +66,26 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     
     // Debounce slightly to avoid race conditions on rapid switching
     const timer = setTimeout(fetchDescription, 100);
-    return () => clearTimeout(timer);
+
+    // Initialize Cast
+    initializeCastApi();
+    const setupCast = () => {
+        const context = getCastContext();
+        if (context) {
+            setCastState(context.getCastState());
+            const handler = (e: any) => setCastState(e.castState);
+            context.addEventListener(window.cast.framework.CastContextEventType.CAST_STATE_CHANGED, handler);
+            return () => context.removeEventListener(window.cast.framework.CastContextEventType.CAST_STATE_CHANGED, handler);
+        }
+    };
+    
+    // Try to setup cast listener
+    const cleanupCast = setupCast();
+
+    return () => {
+        clearTimeout(timer);
+        if (cleanupCast) cleanupCast();
+    };
 
   }, [channel]);
 
@@ -139,19 +161,27 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   }, [isLoading]);
 
   const handleCastClick = async () => {
-    let session = getCastSession();
-    if (!session) {
-      const connected = await requestSession();
-      if (connected) session = getCastSession();
+    if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
+        alert("Nenhum dispositivo Chromecast encontrado.");
+        return;
     }
 
-    if (session) {
-      // ATENÇÃO: Se a URL for um embed HTML, o Chromecast pode falhar.
-      // O ideal é passar uma URL .m3u8 ou .mp4 direta.
-      // Como este app usa embeds, estamos enviando a URL do embed, mas pode não funcionar na TV padrão.
-      castMedia(channel.url, channel.name, channel.image);
+    if (castState === CAST_STATES.CONNECTED) {
+        // Já está conectado, apenas manda a mídia
+        castMedia(channel.url, channel.name, channel.image);
+    } else {
+        // Tenta conectar (User Gesture required)
+        const connected = await requestSession();
+        if (connected) {
+            // Pequeno delay para garantir que a sessão está pronta antes de carregar
+            setTimeout(() => {
+                castMedia(channel.url, channel.name, channel.image);
+            }, 500);
+        }
     }
   };
+
+  const isCastConnected = castState === CAST_STATES.CONNECTED;
 
   return (
     <div className={`transition-all duration-500 ${
@@ -296,14 +326,20 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
              {/* Right Controls (Modes) */}
              <div className="flex items-center gap-2 pointer-events-auto">
-                {/* Cast Button */}
-               <button 
-                 onClick={handleCastClick}
-                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-blue-600 rounded-lg transition-colors"
-                 title="Transmitir para TV"
-               >
-                 <Cast className="w-5 h-5" />
-               </button>
+                {/* Cast Button - Visible only if devices available */}
+                {castState !== CAST_STATES.NO_DEVICES_AVAILABLE && (
+                   <button 
+                     onClick={handleCastClick}
+                     className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors ${
+                       isCastConnected 
+                         ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                         : 'text-white bg-black/40 hover:bg-blue-600'
+                     }`}
+                     title={isCastConnected ? "Conectado (Toque para transmitir)" : "Transmitir para TV"}
+                   >
+                     <Cast className="w-5 h-5" />
+                   </button>
+                )}
 
                <button 
                  onClick={toggleCinemaMode}

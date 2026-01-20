@@ -11,9 +11,10 @@ import {
   Database,
   RefreshCcw,
   Smartphone,
-  Wifi
+  Wifi,
+  Loader2
 } from 'lucide-react';
-import { initializeCastApi, requestSession, getCastSession, endCurrentSession } from '../services/castService';
+import { initializeCastApi, requestSession, getCastContext, endCurrentSession, CAST_STATES } from '../services/castService';
 
 interface SettingsProps {
   isDark: boolean;
@@ -22,48 +23,68 @@ interface SettingsProps {
 
 export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
   const navigate = useNavigate();
-  const [castStatus, setCastStatus] = useState<'idle' | 'connected'>('idle');
+  const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
   const [currentSource, setCurrentSource] = useState<string>('default');
   const [isChangingSource, setIsChangingSource] = useState(false);
 
   useEffect(() => {
+    // 1. Load Source Config
     const saved = localStorage.getItem('content_source');
     setCurrentSource(saved || 'default');
 
-    // Inicializar Cast API
+    // 2. Initialize Cast
     initializeCastApi();
 
-    // Checar estado inicial
-    const session = getCastSession();
-    if (session) setCastStatus('connected');
+    // 3. Setup Cast Listeners
+    const setupCastListener = () => {
+      const context = getCastContext();
+      if (context) {
+        // Set initial state
+        setCastState(context.getCastState());
 
-    // Listener para mudanças de estado do Cast
-    const handleCastStateChange = (event: any) => {
-        const session = getCastSession();
-        setCastStatus(session ? 'connected' : 'idle');
+        // Listen for changes
+        const eventHandler = (event: any) => {
+          setCastState(event.castState);
+        };
+        
+        context.addEventListener(
+          window.cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+          eventHandler
+        );
+
+        return () => {
+          context.removeEventListener(
+            window.cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+            eventHandler
+          );
+        };
+      }
     };
 
-    // Adicionar listener (precisaria ser feito via context event do Google Cast, 
-    // mas para simplificar aqui usamos polling ou verificação direta no clique)
-    const interval = setInterval(() => {
-        const session = getCastSession();
-        if (session && castStatus === 'idle') setCastStatus('connected');
-        if (!session && castStatus === 'connected') setCastStatus('idle');
-    }, 2000);
+    // Retry finding context if it loads slowly
+    const timer = setTimeout(setupCastListener, 1000);
+    const cleanup = setupCastListener();
 
-    return () => clearInterval(interval);
-  }, [castStatus]);
+    return () => {
+      clearTimeout(timer);
+      if (cleanup) cleanup();
+    };
+  }, []);
 
   const handleCast = async () => {
-    if (castStatus === 'connected') {
+    if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
+      alert("Nenhum dispositivo Chromecast encontrado na rede.");
+      return;
+    }
+
+    if (castState === CAST_STATES.CONNECTED) {
         const confirmDisconnect = window.confirm("Desconectar do Chromecast?");
         if (confirmDisconnect) {
             endCurrentSession();
-            setCastStatus('idle');
         }
     } else {
-        const success = await requestSession();
-        if (success) setCastStatus('connected');
+        // Fluxo Correto: Chamar requestSession no clique direto
+        await requestSession();
     }
   };
 
@@ -78,7 +99,6 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
       setIsChangingSource(true);
       localStorage.setItem('content_source', source);
       
-      // Limpar caches
       localStorage.removeItem('megacanaistv_data_v2'); 
       localStorage.removeItem('reidoscanais_data_v1');
 
@@ -88,9 +108,11 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
     }
   };
 
+  const isConnected = castState === CAST_STATES.CONNECTED;
+  const isConnecting = castState === CAST_STATES.CONNECTING;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark transition-colors duration-300">
-      {/* Header */}
       <header className="bg-white dark:bg-dark border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center gap-4">
           <button 
@@ -105,12 +127,11 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         
-        {/* Source Selection Section */}
+        {/* Source Selection */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Fonte de Canais</h2>
           <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
              
-             {/* Option 1: Default */}
              <div 
                onClick={() => handleSourceChange('default')}
                className={`flex items-center justify-between p-4 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800
@@ -133,7 +154,6 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
                 {currentSource === 'default' && <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>}
              </div>
 
-             {/* Option 2: External API */}
              <div 
                onClick={() => handleSourceChange('reidoscanais')}
                className={`flex items-center justify-between p-4 cursor-pointer transition-colors
@@ -162,7 +182,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
           </div>
         </section>
 
-        {/* Appearance Section */}
+        {/* Appearance */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Aparência</h2>
           <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -188,26 +208,30 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
           </div>
         </section>
 
-        {/* Transmission Section */}
+        {/* Transmission - ROBUST */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Transmissão & Dispositivos</h2>
           <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div 
               className={`flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors
-                ${castStatus === 'connected' ? 'bg-blue-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
+                ${isConnected ? 'bg-blue-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
               `}
               onClick={handleCast}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${castStatus === 'connected' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40' : 'bg-blue-500/10 text-blue-500'}`}>
-                   <Cast className={`w-5 h-5`} />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isConnected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40' : 'bg-blue-500/10 text-blue-500'}`}>
+                   {isConnecting ? <Loader2 className="w-5 h-5 animate-spin"/> : <Cast className={`w-5 h-5`} />}
                 </div>
                 <div>
-                  <p className={`font-semibold ${castStatus === 'connected' ? 'text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                  <p className={`font-semibold ${isConnected ? 'text-blue-400' : 'text-gray-900 dark:text-white'}`}>
                     Google Cast
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {castStatus === 'connected' ? 'Conectado à TV' : 'Toque para conectar'}
+                    {isConnected ? 'Conectado à TV' : (
+                        castState === CAST_STATES.NO_DEVICES_AVAILABLE 
+                            ? 'Nenhum dispositivo encontrado' 
+                            : 'Toque para conectar'
+                    )}
                   </p>
                 </div>
               </div>
@@ -219,17 +243,18 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
                     <Smartphone className="w-6 h-6 text-gray-400" />
                     <span className="text-xs font-medium text-gray-500">Este Celular</span>
                 </div>
-                 <div className={`min-w-[100px] p-3 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 text-center ${castStatus === 'connected' ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-200 dark:border-gray-700'}`}>
-                    <Wifi className={`w-6 h-6 ${castStatus === 'connected' ? 'text-blue-500' : 'text-gray-400'}`} />
+                 <div className={`min-w-[100px] p-3 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 text-center 
+                    ${isConnected ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-200 dark:border-gray-700'}
+                 `}>
+                    <Wifi className={`w-6 h-6 ${isConnected ? 'text-blue-500' : 'text-gray-400'}`} />
                     <span className="text-xs font-medium text-gray-500">
-                        {castStatus === 'connected' ? 'TV Conectada' : 'Buscar TV'}
+                        {isConnected ? 'TV Conectada' : 'Buscar TV'}
                     </span>
                 </div>
             </div>
           </div>
         </section>
 
-        {/* Footer Info */}
         <div className="flex flex-col items-center justify-center text-center mt-10 text-gray-400 text-sm gap-2">
            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-2">
              <ShieldCheck className="w-6 h-6 text-gray-500" />
