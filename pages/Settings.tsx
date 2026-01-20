@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { initializeCastApi, requestSession, getCastContext, endCurrentSession, CAST_STATES } from '../services/castService';
+import { InstallAppModal } from '../components/InstallAppModal';
 
 interface SettingsProps {
   isDark: boolean;
@@ -21,6 +22,7 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
   const navigate = useNavigate();
   const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     // 1. Initialize Cast
@@ -62,16 +64,19 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
     };
   }, []);
 
-  const handleCast = async () => {
-    // 1. Promoção do App Externo (Solicitação do usuário)
-    const wantsApp = window.confirm("Para transmitir para a TV com estabilidade, recomendamos instalar o app 'Cast to TV'. Deseja baixar/abrir agora?");
-    
-    if (wantsApp) {
-        window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
-        return;
-    }
+  const handleCastClick = () => {
+      setShowInstallModal(true);
+  };
 
-    // 2. Lógica Nativa (Fallback se o usuário cancelar)
+  const handleInstallApp = () => {
+      window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
+      setShowInstallModal(false);
+  };
+
+  const handleNativeCast = async () => {
+    setShowInstallModal(false);
+    
+    // Fallback Nativo
     if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
       alert("Nenhum dispositivo Chromecast encontrado na rede pelo navegador.");
       return;
@@ -92,6 +97,13 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark transition-colors duration-300">
+      <InstallAppModal 
+        isOpen={showInstallModal}
+        onClose={handleNativeCast}
+        onDismiss={() => setShowInstallModal(false)}
+        onConfirm={handleInstallApp}
+      />
+
       <header className="bg-white dark:bg-dark border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center gap-4">
           <button 
@@ -140,7 +152,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
               className={`flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors
                 ${isConnected ? 'bg-blue-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
               `}
-              onClick={handleCast}
+              onClick={handleCastClick}
             >
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isConnected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40' : 'bg-blue-500/10 text-blue-500'}`}>

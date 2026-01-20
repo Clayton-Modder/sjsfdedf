@@ -16,6 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
 import { castMedia, requestSession, getCastContext, CAST_STATES, initializeCastApi } from '../services/castService';
+import { InstallAppModal } from './InstallAppModal';
 
 interface PlayerProps {
   channel: Channel;
@@ -42,6 +43,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   // Cast State
   const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     // Reset state when channel changes
@@ -160,16 +162,19 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     }, 3000);
   }, [isLoading]);
 
-  const handleCastClick = async () => {
-    // 1. Promoção do App Externo (Solicitação)
-    const wantsApp = window.confirm("Para transmitir este canal, recomendamos utilizar o app 'Cast to TV'. Deseja baixar/abrir agora?");
-    
-    if (wantsApp) {
-        window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
-        return;
-    }
+  const handleCastClick = () => {
+    setShowInstallModal(true);
+  };
 
-    // 2. Lógica Nativa (Fallback)
+  const handleInstallApp = () => {
+      window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
+      setShowInstallModal(false);
+  };
+
+  const handleNativeCast = async () => {
+    setShowInstallModal(false);
+
+    // Fallback logic
     if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
         alert("Nenhum dispositivo Chromecast encontrado.");
         return;
@@ -198,6 +203,12 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
         ? 'fixed inset-0 z-50 bg-black flex flex-col justify-center' 
         : 'w-full bg-dark pt-4 pb-6 relative'
     }`}>
+      <InstallAppModal 
+        isOpen={showInstallModal}
+        onClose={handleNativeCast}
+        onDismiss={() => setShowInstallModal(false)}
+        onConfirm={handleInstallApp}
+      />
       <div 
         className={`mx-auto transition-all duration-500 ${
           isCinemaMode 
