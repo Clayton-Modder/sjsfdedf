@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
 import { castMedia, requestSession, getCastContext, CAST_STATES, initializeCastApi } from '../services/castService';
 import { InstallAppModal } from './InstallAppModal';
+import { useRadio } from '../contexts/RadioContext';
 
 interface PlayerProps {
   channel: Channel;
@@ -28,6 +29,18 @@ interface PlayerProps {
 
 export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const navigate = useNavigate();
+  
+  // Global Radio Context
+  const { 
+    activeRadio, 
+    isPlaying: isRadioPlaying, 
+    isBuffering: isRadioBuffering,
+    playRadio, 
+    togglePlay: toggleRadioPlay 
+  } = useRadio();
+
+  const isRadio = channel.categories.includes(-4);
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
@@ -42,32 +55,39 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const [showControls, setShowControls] = useState(true);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false); // New state for Play/Pause
+  
+  // Local state for Video (Radio uses context)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   
   const controlsTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Audio Ref
-  const audioRef = useRef<HTMLAudioElement>(null);
-
   // Cast State
   const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
   const [showInstallModal, setShowInstallModal] = useState(false);
 
-  const isRadio = channel.categories.includes(-4);
-
   useEffect(() => {
     // Reset state when channel changes
-    setIsLoading(true);
     setHasError(false);
     setIframeKey(prev => prev + 1);
-    setIsPlaying(false);
+    
+    // Video logic reset
+    if (!isRadio) {
+        setIsLoading(true);
+        setIsVideoPlaying(false);
+    } else {
+        // Radio logic: sync with global player
+        setIsLoading(false); // UI is ready immediately for radio
+        // If the channel changed and it's a radio, we might need to tell global player to switch
+        if (activeRadio?.id !== channel.id) {
+            playRadio(channel);
+        }
+    }
     
     // Reset AI state
     setAiDescription(null);
     setAiSources([]);
     
-    // Fetch AI Description (Skip for radios usually)
     const fetchDescription = async () => {
       setLoadingAi(true);
       const result = await generateChannelDescription(channel.name);
@@ -78,10 +98,8 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
       setLoadingAi(false);
     };
     
-    // Debounce slightly to avoid race conditions on rapid switching
     const timer = setTimeout(fetchDescription, 100);
 
-    // Initialize Cast
     initializeCastApi();
     const setupCast = () => {
         const context = getCastContext();
@@ -93,7 +111,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
         }
     };
     
-    // Try to setup cast listener
     const cleanupCast = setupCast();
 
     return () => {
@@ -101,51 +118,24 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
         if (cleanupCast) cleanupCast();
     };
 
-  }, [channel]);
+  }, [channel.id]); // Only re-run if ID changes
 
-  // Handle Audio Volume
-  useEffect(() => {
-    if (audioRef.current) {
-        audioRef.current.volume = volume / 100;
-        audioRef.current.muted = isMuted;
-    }
-  }, [volume, isMuted]);
+  // Determine if we are currently "Playing" for UI purposes
+  const isPlaying = isRadio ? isRadioPlaying : isVideoPlaying;
+  const isBuffering = isRadio ? isRadioBuffering : isLoading;
 
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (controlsTimeoutRef.current) {
-        window.clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleMediaLoad = () => {
+  // Handle Video Media Load
+  const handleVideoLoad = () => {
     setIsLoading(false);
-    if (isRadio && audioRef.current) {
-        // Attempt to play and update state
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                setIsPlaying(true);
-            }).catch(error => {
-                console.log("Autoplay prevented:", error);
-                setIsPlaying(false);
-            });
-        }
-    }
+    setIsVideoPlaying(true);
   };
 
-  const togglePlay = (e?: React.MouseEvent) => {
+  const handleTogglePlay = (e?: React.MouseEvent) => {
       e?.stopPropagation();
-      if (audioRef.current) {
-          if (isPlaying) {
-              audioRef.current.pause();
-              setIsPlaying(false);
-          } else {
-              audioRef.current.play();
-              setIsPlaying(true);
-          }
+      if (isRadio) {
+          toggleRadioPlay();
+      } else {
+          // Iframe control is limited, usually re-render or nothing
       }
   };
 
@@ -162,7 +152,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   const toggleCinemaMode = () => {
     setIsCinemaMode(!isCinemaMode);
-    // Force show controls when toggling
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
@@ -173,12 +162,12 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   };
 
   const handleReload = () => {
-    setIsLoading(true);
-    setHasError(false);
-    setIframeKey(prev => prev + 1);
-    if (audioRef.current) {
-        audioRef.current.load();
-        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    if (isRadio) {
+        playRadio(channel); // Force reload in global player
+    } else {
+        setIsLoading(true);
+        setHasError(false);
+        setIframeKey(prev => prev + 1);
     }
   };
 
@@ -187,6 +176,8 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Note: Global Audio volume control would require exposing audio ref or volume state in context
+    // For now, this controls local state, but we'll assume system volume for global audio simplicity in this step
     const newVol = parseInt(e.target.value);
     setVolume(newVol);
     if (newVol > 0 && isMuted) setIsMuted(false);
@@ -198,20 +189,17 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     if (isMuted && volume === 0) setVolume(50);
   };
 
-  // Interaction handlers for showing/hiding controls
   const handleInteraction = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (!isLoading && (isPlaying || !isRadio)) { 
-          // Only hide if playing (or if it's video mode)
-          // If radio is paused, keep controls visible
+      if (!isBuffering && (isPlaying || !isRadio)) { 
           setShowControls(false);
       }
     }, 3000);
-  }, [isLoading, isPlaying, isRadio]);
+  }, [isBuffering, isPlaying, isRadio]);
 
   const handleCastClick = () => {
     setShowInstallModal(true);
@@ -224,21 +212,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   const handleNativeCast = async () => {
     setShowInstallModal(false);
-
-    // Fallback logic
     if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
         alert("Nenhum dispositivo Chromecast encontrado.");
         return;
     }
-
     if (castState === CAST_STATES.CONNECTED) {
-        // Já está conectado, apenas manda a mídia
         castMedia(channel.url, channel.name, channel.image);
     } else {
-        // Tenta conectar (User Gesture required)
         const connected = await requestSession();
         if (connected) {
-            // Pequeno delay para garantir que a sessão está pronta antes de carregar
             setTimeout(() => {
                 castMedia(channel.url, channel.name, channel.image);
             }, 500);
@@ -304,7 +286,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           onClick={handleInteraction}
           onTouchStart={handleInteraction}
         >
-          {isLoading && (
+          {isBuffering && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10 text-white">
               <Loader2 className="w-12 h-12 animate-spin text-primary mb-3" />
               <p className="text-base font-medium text-gray-300">
@@ -318,7 +300,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
                <p className="text-xl font-bold mb-2">Sinal Indisponível</p>
                <p className="text-gray-400 text-base mb-6 max-w-md">
-                 Não foi possível conectar ao servidor de streaming deste canal. Tente recarregar.
+                 Não foi possível conectar ao servidor.
                </p>
                <button 
                  onClick={handleReload}
@@ -330,7 +312,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           ) : (
             <>
               {isRadio ? (
-                  // AUDIO PLAYER VISUALIZATION
+                  // RADIO VISUALIZER (No <audio> tag here, controlled via Context)
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-black flex flex-col items-center justify-center overflow-hidden">
                       
                       {/* Animated Background Pulse */}
@@ -354,7 +336,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                                 transition-transform duration-[20s] ease-linear
                                 ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}
                           `}>
-                              {/* Inner Ring details for vinyl look */}
                               <div className="absolute inset-0 rounded-full border border-gray-700/30 m-2"></div>
                               <div className="absolute inset-0 rounded-full border border-gray-700/30 m-4"></div>
                               <div className="absolute inset-0 rounded-full border border-gray-700/30 m-8"></div>
@@ -401,7 +382,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                       {/* Play/Pause Overlay - Center of Screen */}
                       <div className={`absolute inset-0 flex items-center justify-center z-20 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
                           <button 
-                            onClick={togglePlay}
+                            onClick={handleTogglePlay}
                             className="pointer-events-auto w-16 h-16 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 transition-all hover:scale-110 active:scale-95 group"
                           >
                              {isPlaying ? (
@@ -411,18 +392,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                              )}
                           </button>
                       </div>
-
-                      <audio
-                        ref={audioRef}
-                        key={iframeKey}
-                        autoPlay
-                        onCanPlay={handleMediaLoad}
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onError={() => setHasError(true)}
-                        src={channel.url}
-                        className="hidden" 
-                      />
                   </div>
               ) : (
                   // VIDEO PLAYER (IFRAME)
@@ -433,7 +402,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
-                    onLoad={handleMediaLoad}
+                    onLoad={handleVideoLoad}
                     title={`Player ${channel.name}`}
                   />
               )}
@@ -475,20 +444,21 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
             className={`
               absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent 
               transition-opacity duration-300 flex items-end justify-between gap-4
-              ${showControls || isLoading || (isRadio && !isPlaying) ? 'opacity-100' : 'opacity-0'}
+              ${showControls || (isRadio && !isPlaying) ? 'opacity-100' : 'opacity-0'}
             `}
           >
              {/* Left Controls (Volume) */}
              <div className="flex items-center gap-3">
                 {isRadio && (
                     <button 
-                        onClick={togglePlay} 
+                        onClick={handleTogglePlay} 
                         className="p-2 bg-white text-black rounded-full hover:bg-gray-200 transition-colors pointer-events-auto mr-2"
                     >
                         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                     </button>
                 )}
 
+                {/* Hide volume slider for Radio since we don't control global audio volume here efficiently yet, OR keep it as dummy for now */}
                 <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto">
                   <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
                     {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -515,7 +485,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
              {/* Right Controls (Modes) */}
              <div className="flex items-center gap-2 pointer-events-auto">
-                {/* Cast Button - Always Visible to prompt App Install */}
                  <button 
                    onClick={handleCastClick}
                    className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors ${
@@ -523,7 +492,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
                        : 'text-white bg-black/40 hover:bg-blue-600'
                    }`}
-                   title={isCastConnected ? "Conectado (Toque para transmitir)" : "Transmitir para TV"}
+                   title={isCastConnected ? "Conectado" : "Transmitir"}
                  >
                    <Cast className="w-5 h-5" />
                  </button>

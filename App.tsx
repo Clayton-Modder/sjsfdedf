@@ -7,6 +7,8 @@ import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
 import { Settings } from './pages/Settings';
 import { RemoteControl } from './components/RemoteControl';
+import { RadioProvider } from './contexts/RadioContext';
+import { GlobalRadioPlayer } from './components/GlobalRadioPlayer';
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -124,34 +126,37 @@ const App: React.FC = () => {
   }
 
   return (
-    <HashRouter>
-      <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
-        <RemoteControl channels={channels} />
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <Home 
-                channels={channels} 
-                categories={categories}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                history={history}
-                radios={radios}
-              />
-            } 
-          />
-          <Route 
-            path="/watch/:id" 
-            element={<Watch channels={channels} radios={radios} addToHistory={addToHistory} />} 
-          />
-          <Route 
-            path="/settings" 
-            element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
-          />
-        </Routes>
-      </div>
-    </HashRouter>
+    <RadioProvider>
+      <HashRouter>
+        <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
+          <GlobalRadioPlayer />
+          <RemoteControl channels={channels} />
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <Home 
+                  channels={channels} 
+                  categories={categories}
+                  favorites={favorites}
+                  toggleFavorite={toggleFavorite}
+                  history={history}
+                  radios={radios}
+                />
+              } 
+            />
+            <Route 
+              path="/watch/:id" 
+              element={<Watch channels={channels} radios={radios} addToHistory={addToHistory} />} 
+            />
+            <Route 
+              path="/settings" 
+              element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
+            />
+          </Routes>
+        </div>
+      </HashRouter>
+    </RadioProvider>
   );
 };
 
