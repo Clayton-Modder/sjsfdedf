@@ -7,9 +7,6 @@ import {
   Cast, 
   ChevronRight,
   ShieldCheck,
-  Server,
-  Database,
-  RefreshCcw,
   Smartphone,
   Wifi,
   Loader2
@@ -24,18 +21,12 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
   const navigate = useNavigate();
   const [castState, setCastState] = useState<string>('NO_DEVICES_AVAILABLE');
-  const [currentSource, setCurrentSource] = useState<string>('default');
-  const [isChangingSource, setIsChangingSource] = useState(false);
 
   useEffect(() => {
-    // 1. Load Source Config
-    const saved = localStorage.getItem('content_source');
-    setCurrentSource(saved || 'default');
-
-    // 2. Initialize Cast
+    // 1. Initialize Cast
     initializeCastApi();
 
-    // 3. Setup Cast Listeners
+    // 2. Setup Cast Listeners
     const setupCastListener = () => {
       const context = getCastContext();
       if (context) {
@@ -72,8 +63,17 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
   }, []);
 
   const handleCast = async () => {
+    // 1. Promoção do App Externo (Solicitação do usuário)
+    const wantsApp = window.confirm("Para transmitir para a TV com estabilidade, recomendamos instalar o app 'Cast to TV'. Deseja baixar/abrir agora?");
+    
+    if (wantsApp) {
+        window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
+        return;
+    }
+
+    // 2. Lógica Nativa (Fallback se o usuário cancelar)
     if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
-      alert("Nenhum dispositivo Chromecast encontrado na rede.");
+      alert("Nenhum dispositivo Chromecast encontrado na rede pelo navegador.");
       return;
     }
 
@@ -83,28 +83,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
             endCurrentSession();
         }
     } else {
-        // Fluxo Correto: Chamar requestSession no clique direto
         await requestSession();
-    }
-  };
-
-  const handleSourceChange = (source: string) => {
-    if (source === currentSource) return;
-    
-    const confirmChange = window.confirm(
-      "Mudar a fonte reiniciará o aplicativo para carregar os novos canais. Deseja continuar?"
-    );
-
-    if (confirmChange) {
-      setIsChangingSource(true);
-      localStorage.setItem('content_source', source);
-      
-      localStorage.removeItem('megacanaistv_data_v2'); 
-      localStorage.removeItem('reidoscanais_data_v1');
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     }
   };
 
@@ -127,61 +106,6 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         
-        {/* Source Selection */}
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Fonte de Canais</h2>
-          <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-             
-             <div 
-               onClick={() => handleSourceChange('default')}
-               className={`flex items-center justify-between p-4 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800
-                 ${currentSource === 'default' ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
-               `}
-             >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentSource === 'default' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
-                     <Database className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className={`font-semibold ${currentSource === 'default' ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                      Servidor Padrão
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Lista oficial curada (Estável)
-                    </p>
-                  </div>
-                </div>
-                {currentSource === 'default' && <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>}
-             </div>
-
-             <div 
-               onClick={() => handleSourceChange('reidoscanais')}
-               className={`flex items-center justify-between p-4 cursor-pointer transition-colors
-                 ${currentSource === 'reidoscanais' ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
-               `}
-             >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentSource === 'reidoscanais' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
-                     <Server className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className={`font-semibold ${currentSource === 'reidoscanais' ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                        Servidor Alternativo
-                      </p>
-                      {isChangingSource && currentSource !== 'reidoscanais' && <RefreshCcw className="w-3 h-3 animate-spin text-gray-400"/>}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Rei dos Canais (Lista Dinâmica)
-                    </p>
-                  </div>
-                </div>
-                {currentSource === 'reidoscanais' && <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>}
-             </div>
-
-          </div>
-        </section>
-
         {/* Appearance */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-4 px-2">Aparência</h2>
@@ -224,14 +148,10 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
                 </div>
                 <div>
                   <p className={`font-semibold ${isConnected ? 'text-blue-400' : 'text-gray-900 dark:text-white'}`}>
-                    Google Cast
+                    Google Cast / App Parceiro
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {isConnected ? 'Conectado à TV' : (
-                        castState === CAST_STATES.NO_DEVICES_AVAILABLE 
-                            ? 'Nenhum dispositivo encontrado' 
-                            : 'Toque para conectar'
-                    )}
+                    {isConnected ? 'Conectado à TV' : 'Conectar ou baixar app'}
                   </p>
                 </div>
               </div>

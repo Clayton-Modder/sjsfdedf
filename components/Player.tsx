@@ -161,6 +161,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   }, [isLoading]);
 
   const handleCastClick = async () => {
+    // 1. Promoção do App Externo (Solicitação)
+    const wantsApp = window.confirm("Para transmitir este canal, recomendamos utilizar o app 'Cast to TV'. Deseja baixar/abrir agora?");
+    
+    if (wantsApp) {
+        window.open("https://play.google.com/store/apps/details?id=cast.video.screenmirroring.casttotv&hl=pt_BR", "_blank");
+        return;
+    }
+
+    // 2. Lógica Nativa (Fallback)
     if (castState === CAST_STATES.NO_DEVICES_AVAILABLE) {
         alert("Nenhum dispositivo Chromecast encontrado.");
         return;
@@ -326,20 +335,18 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
              {/* Right Controls (Modes) */}
              <div className="flex items-center gap-2 pointer-events-auto">
-                {/* Cast Button - Visible only if devices available */}
-                {castState !== CAST_STATES.NO_DEVICES_AVAILABLE && (
-                   <button 
-                     onClick={handleCastClick}
-                     className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors ${
-                       isCastConnected 
-                         ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                         : 'text-white bg-black/40 hover:bg-blue-600'
-                     }`}
-                     title={isCastConnected ? "Conectado (Toque para transmitir)" : "Transmitir para TV"}
-                   >
-                     <Cast className="w-5 h-5" />
-                   </button>
-                )}
+                {/* Cast Button - Always Visible to prompt App Install */}
+                 <button 
+                   onClick={handleCastClick}
+                   className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors ${
+                     isCastConnected 
+                       ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                       : 'text-white bg-black/40 hover:bg-blue-600'
+                   }`}
+                   title={isCastConnected ? "Conectado (Toque para transmitir)" : "Transmitir para TV"}
+                 >
+                   <Cast className="w-5 h-5" />
+                 </button>
 
                <button 
                  onClick={toggleCinemaMode}
