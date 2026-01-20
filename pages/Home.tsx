@@ -5,6 +5,7 @@ import { CategoryList } from '../components/CategoryList';
 import { ChannelGrid } from '../components/ChannelGrid';
 import { GameList } from '../components/GameList';
 import { RadioList } from '../components/RadioList';
+import { EPGList } from '../components/EPGList';
 import { Channel, Category, Game, Radio } from '../types';
 import { fetchGames } from '../services/dataService';
 
@@ -42,8 +43,8 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
 
   // Filter Logic for Channels
   const filteredChannels = useMemo(() => {
-    // If we are in "Jogos" or "Rádios" mode, channel filtering doesn't matter much for the main grid
-    if (activeCategoryId === -3 || activeCategoryId === -4) return [];
+    // If we are in "Jogos", "Rádios" or "Programação" mode, channel filtering doesn't matter much for the main grid
+    if (activeCategoryId === -3 || activeCategoryId === -4 || activeCategoryId === -5) return [];
 
     let result: Channel[] = [];
 
@@ -142,6 +143,8 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
              <GameList games={filteredGames} loading={loadingGames} />
            ) : activeCategoryId === -4 ? (
              <RadioList radios={filteredRadios} />
+           ) : activeCategoryId === -5 ? (
+             <EPGList searchQuery={searchQuery} />
            ) : (
              <ChannelGrid 
                channels={filteredChannels} 

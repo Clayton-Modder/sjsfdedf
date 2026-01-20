@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Channel } from '../types';
 import { Play, Tv, Loader2, Heart } from 'lucide-react';
+import { useEPG } from '../contexts/EPGContext';
 
 interface ChannelCardProps {
   channel: Channel;
@@ -12,6 +13,10 @@ interface ChannelCardProps {
 const ChannelCard: React.FC<ChannelCardProps> = ({ channel, isFavorite, onToggleFavorite, onClick }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  
+  // EPG Hook
+  const { getChannelEPG } = useEPG();
+  const epgData = getChannelEPG(channel.name);
 
   // Helper to extract initials
   const getInitials = (name: string) => {
@@ -25,7 +30,6 @@ const ChannelCard: React.FC<ChannelCardProps> = ({ channel, isFavorite, onToggle
       .toUpperCase() || 'TV';
   };
 
-  // Check if image URL is present
   const hasImage = !!channel.image && channel.image.trim() !== '';
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -38,10 +42,8 @@ const ChannelCard: React.FC<ChannelCardProps> = ({ channel, isFavorite, onToggle
       onClick={onClick}
       className="group relative bg-card hover:bg-gray-700 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 border border-gray-800 hover:border-gray-600 flex flex-col h-full"
     >
-      {/* Image Aspect Ratio Container */}
       <div className="aspect-video w-full bg-gray-900 relative p-4 flex items-center justify-center">
         
-        {/* Favorite Button - Absolute Top Right */}
         <button
           onClick={handleFavoriteClick}
           className="absolute top-2 right-2 z-20 p-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm transition-all duration-200 group-hover:opacity-100 opacity-100 sm:opacity-0"
@@ -86,25 +88,39 @@ const ChannelCard: React.FC<ChannelCardProps> = ({ channel, isFavorite, onToggle
             <Play className="w-6 h-6 text-white fill-current ml-1" />
           </div>
         </div>
+
+        {/* EPG Progress Bar on Card (Visual Flair) */}
+        {epgData && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800/50">
+                <div 
+                    className="h-full bg-primary" 
+                    style={{ width: `${epgData.percentage}%` }}
+                ></div>
+            </div>
+        )}
       </div>
 
-      {/* Content */}
       <div className="p-3 border-t border-gray-700/50 flex-1 flex flex-col justify-center gap-1">
         <h3 className="font-semibold text-gray-200 text-sm sm:text-base truncate text-center group-hover:text-primary transition-colors">
           {channel.name}
         </h3>
         
-        {/* Info Line: Current Program or Description */}
-        {(channel.currentProgram || channel.description) && (
-          <div className="flex items-center justify-center gap-1.5 w-full">
-              {channel.currentProgram && (
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" title="Ao Vivo"></span>
-              )}
-              <p className="text-xs text-gray-400 truncate max-w-full opacity-80 group-hover:opacity-100 transition-opacity">
-                {channel.currentProgram || channel.description}
-              </p>
-          </div>
-        )}
+        <div className="flex items-center justify-center gap-1.5 w-full">
+              {epgData ? (
+                  <p className="text-xs text-primary font-medium truncate max-w-full opacity-90">
+                    {epgData.title}
+                  </p>
+              ) : (channel.currentProgram || channel.description) ? (
+                  <>
+                      {channel.currentProgram && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" title="Ao Vivo"></span>
+                      )}
+                      <p className="text-xs text-gray-400 truncate max-w-full opacity-80 group-hover:opacity-100 transition-opacity">
+                        {channel.currentProgram || channel.description}
+                      </p>
+                  </>
+              ) : null}
+        </div>
       </div>
     </div>
   );
@@ -123,13 +139,11 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ channels, favorites, o
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
-  // Reset visible count when channel list changes (e.g. category switch or search)
   useEffect(() => {
     setVisibleCount(ITEMS_PER_PAGE);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [channels]);
 
-  // Infinite Scroll Observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -138,8 +152,8 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ channels, favorites, o
         }
       },
       {
-        root: null, // viewport
-        rootMargin: '200px', // load before reaching bottom
+        root: null,
+        rootMargin: '200px',
         threshold: 0.1,
       }
     );
@@ -180,7 +194,6 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ channels, favorites, o
         ))}
       </div>
       
-      {/* Sentinel element for infinite scroll */}
       {visibleCount < channels.length && (
         <div 
           ref={observerRef} 

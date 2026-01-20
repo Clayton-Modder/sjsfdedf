@@ -1,3 +1,4 @@
+
 export interface Category {
   id: number;
   name: string;
@@ -49,4 +50,27 @@ export interface Radio {
 export interface ApiData {
   categories: Category[];
   channels: Channel[];
+}
+
+// Novos tipos para EPG
+export interface EPGProgram {
+  title: string;
+  description: string;
+  start: Date;
+  end: Date;
+  channelId: string; // ID interno do XMLTV
+}
+
+export interface EPGChannel {
+  id: string; // ID interno do XMLTV
+  displayName: string;
+  programs: EPGProgram[];
+}
+
+export interface CurrentProgramData {
+  title: string;
+  description: string;
+  since: string;
+  until: string;
+  percentage: number; // 0 a 100 para barra de progresso
 }

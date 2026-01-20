@@ -15,13 +15,15 @@ import {
   Radio,
   Music2,
   Play,
-  Pause
+  Pause,
+  Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
 import { castMedia, requestSession, getCastContext, CAST_STATES, initializeCastApi } from '../services/castService';
 import { InstallAppModal } from './InstallAppModal';
 import { useRadio } from '../contexts/RadioContext';
+import { useEPG } from '../contexts/EPGContext';
 
 interface PlayerProps {
   channel: Channel;
@@ -30,7 +32,7 @@ interface PlayerProps {
 export const Player: React.FC<PlayerProps> = ({ channel }) => {
   const navigate = useNavigate();
   
-  // Global Radio Context
+  // Contexts
   const { 
     activeRadio, 
     isPlaying: isRadioPlaying, 
@@ -39,15 +41,17 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     togglePlay: toggleRadioPlay 
   } = useRadio();
 
+  const { getChannelEPG } = useEPG();
+
   const isRadio = channel.categories.includes(-4);
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   
-  // AI Description State
+  // AI/EPG States
   const [aiDescription, setAiDescription] = useState<string | null>(null);
-  const [aiSources, setAiSources] = useState<Source[]>([]);
+  const [epgData, setEpgData] = useState<ReturnType<typeof getChannelEPG>>(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
   // UI States
@@ -71,35 +75,39 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     setHasError(false);
     setIframeKey(prev => prev + 1);
     
-    // Video logic reset
     if (!isRadio) {
         setIsLoading(true);
         setIsVideoPlaying(false);
     } else {
-        // Radio logic: sync with global player
-        setIsLoading(false); // UI is ready immediately for radio
-        // If the channel changed and it's a radio, we might need to tell global player to switch
+        setIsLoading(false);
         if (activeRadio?.id !== channel.id) {
             playRadio(channel);
         }
     }
     
-    // Reset AI state
-    setAiDescription(null);
-    setAiSources([]);
-    
-    const fetchDescription = async () => {
-      setLoadingAi(true);
-      const result = await generateChannelDescription(channel.name);
-      if (result) {
-        setAiDescription(result.text);
-        setAiSources(result.sources);
-      }
-      setLoadingAi(false);
+    // EPG Data Update Loop
+    const updateEPG = () => {
+        const data = getChannelEPG(channel.name);
+        setEpgData(data);
     };
     
-    const timer = setTimeout(fetchDescription, 100);
+    updateEPG(); // Initial fetch
+    const epgInterval = setInterval(updateEPG, 60000); // Update every minute for progress bar
 
+    // AI Description (Legacy fallback)
+    setAiDescription(null);
+    if (!epgData) { // Only fetch AI if no EPG
+        const fetchDescription = async () => {
+          setLoadingAi(true);
+          const result = await generateChannelDescription(channel.name);
+          if (result) {
+            setAiDescription(result.text);
+          }
+          setLoadingAi(false);
+        };
+        fetchDescription();
+    }
+    
     initializeCastApi();
     const setupCast = () => {
         const context = getCastContext();
@@ -114,17 +122,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
     const cleanupCast = setupCast();
 
     return () => {
-        clearTimeout(timer);
+        clearInterval(epgInterval);
         if (cleanupCast) cleanupCast();
     };
 
-  }, [channel.id]); // Only re-run if ID changes
+  }, [channel.id, channel.name, isRadio, getChannelEPG]);
 
-  // Determine if we are currently "Playing" for UI purposes
   const isPlaying = isRadio ? isRadioPlaying : isVideoPlaying;
   const isBuffering = isRadio ? isRadioBuffering : isLoading;
 
-  // Handle Video Media Load
   const handleVideoLoad = () => {
     setIsLoading(false);
     setIsVideoPlaying(true);
@@ -134,8 +140,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
       e?.stopPropagation();
       if (isRadio) {
           toggleRadioPlay();
-      } else {
-          // Iframe control is limited, usually re-render or nothing
       }
   };
 
@@ -163,7 +167,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   const handleReload = () => {
     if (isRadio) {
-        playRadio(channel); // Force reload in global player
+        playRadio(channel);
     } else {
         setIsLoading(true);
         setHasError(false);
@@ -176,8 +180,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Note: Global Audio volume control would require exposing audio ref or volume state in context
-    // For now, this controls local state, but we'll assume system volume for global audio simplicity in this step
     const newVol = parseInt(e.target.value);
     setVolume(newVol);
     if (newVol > 0 && isMuted) setIsMuted(false);
@@ -259,12 +261,16 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                >
                   <ArrowLeft className="w-6 h-6" />
                </button>
-               <div>
+               <div className="flex-1">
                   <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-1">{channel.name}</h2>
                   <div className="flex items-center gap-2">
                     {isRadio && isPlaying && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
-                    <p className="text-sm text-gray-300 font-medium">
-                      {channel.currentProgram || (isRadio ? "Rádio Ao Vivo" : "Transmissão Ao Vivo")}
+                    <p className="text-sm text-gray-300 font-medium truncate">
+                      {epgData ? (
+                        <span className="text-primary font-bold uppercase">{epgData.title}</span>
+                      ) : (
+                        channel.currentProgram || (isRadio ? "Rádio Ao Vivo" : "Transmissão Ao Vivo")
+                      )}
                     </p>
                   </div>
                </div>
@@ -312,23 +318,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           ) : (
             <>
               {isRadio ? (
-                  // RADIO VISUALIZER (No <audio> tag here, controlled via Context)
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-black flex flex-col items-center justify-center overflow-hidden">
-                      
-                      {/* Animated Background Pulse */}
+                      {/* Radio Visualizer Code (Same as before) */}
                       <div className={`absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-20'}`}></div>
-                      
-                      {/* Dynamic "Sound Waves" Background */}
                       {isPlaying && (
                          <div className="absolute inset-0 flex items-center justify-center opacity-10">
                             <div className="w-[120%] h-[100px] bg-primary blur-[80px] animate-pulse"></div>
                          </div>
                       )}
-
-                      {/* Vinyl/Logo Container */}
                       <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pb-12">
-                          
-                          {/* Main Disc */}
                           <div className={`
                                 relative w-48 h-48 md:w-64 md:h-64 rounded-full 
                                 bg-gray-950 border-8 border-gray-800 shadow-2xl overflow-hidden 
@@ -336,10 +334,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                                 transition-transform duration-[20s] ease-linear
                                 ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}
                           `}>
-                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-2"></div>
-                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-4"></div>
-                              <div className="absolute inset-0 rounded-full border border-gray-700/30 m-8"></div>
-                              
                               <img 
                                 src={channel.image} 
                                 alt={channel.name} 
@@ -347,24 +341,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                                 onError={(e) => (e.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png')}
                               />
                           </div>
-
-                          {/* Equalizer Visualizer (Simulated) */}
-                          <div className="h-12 flex items-end gap-1.5 mt-8 mb-4">
-                              {[...Array(8)].map((_, i) => (
-                                  <div 
-                                    key={i} 
-                                    className={`w-1.5 bg-primary rounded-t-full transition-all duration-300 ease-in-out ${isPlaying ? 'animate-[bounce_0.8s_infinite]' : 'h-1'}`}
-                                    style={{ 
-                                        animationDelay: `${i * 0.1}s`,
-                                        height: isPlaying ? undefined : '4px',
-                                        animationDuration: `${0.6 + (i % 3) * 0.2}s`
-                                    }}
-                                  ></div>
-                              ))}
-                          </div>
-                          
-                          {/* Live Badge */}
-                          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+                          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md mt-8">
                               {isPlaying ? (
                                   <>
                                       <span className="relative flex h-3 w-3">
@@ -378,23 +355,16 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                               )}
                           </div>
                       </div>
-
-                      {/* Play/Pause Overlay - Center of Screen */}
                       <div className={`absolute inset-0 flex items-center justify-center z-20 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
                           <button 
                             onClick={handleTogglePlay}
                             className="pointer-events-auto w-16 h-16 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 transition-all hover:scale-110 active:scale-95 group"
                           >
-                             {isPlaying ? (
-                                 <Pause className="w-8 h-8 text-white fill-current" />
-                             ) : (
-                                 <Play className="w-8 h-8 text-white fill-current ml-1" />
-                             )}
+                             {isPlaying ? <Pause className="w-8 h-8 text-white fill-current" /> : <Play className="w-8 h-8 text-white fill-current ml-1" />}
                           </button>
                       </div>
                   </div>
               ) : (
-                  // VIDEO PLAYER (IFRAME)
                   <iframe
                     key={iframeKey}
                     src={channel.url}
@@ -407,6 +377,39 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                   />
               )}
             </>
+          )}
+
+          {/* EPG Info Overlay (Visible when controls show) */}
+          {epgData && (showControls || !isPlaying) && (
+              <div className="absolute bottom-20 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-md z-30 transition-opacity duration-300 pointer-events-none">
+                  <div className="bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                          <div>
+                              <p className="text-xs text-primary font-bold uppercase tracking-wider mb-1">Agora</p>
+                              <h3 className="text-white font-bold text-lg leading-tight">{epgData.title}</h3>
+                          </div>
+                          <div className="text-right">
+                              <span className="text-xs font-mono text-gray-400 bg-black/50 px-1.5 py-0.5 rounded">
+                                  {epgData.since} - {epgData.until}
+                              </span>
+                          </div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="h-1 w-full bg-gray-700 rounded-full overflow-hidden mb-2">
+                          <div 
+                              className="h-full bg-primary rounded-full transition-all duration-1000"
+                              style={{ width: `${epgData.percentage}%` }}
+                          ></div>
+                      </div>
+                      
+                      {epgData.description && (
+                          <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed">
+                              {epgData.description}
+                          </p>
+                      )}
+                  </div>
+              </div>
           )}
 
           {/* Top Overlay for Cinema Mode Info & Exit */}
@@ -422,10 +425,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                    </button>
                    <div>
                      <h2 className="text-lg font-bold text-white drop-shadow-md">{channel.name}</h2>
-                     <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${isRadio ? 'bg-red-500' : 'bg-green-500'}`}></span>
-                        <p className="text-xs text-gray-300 font-medium">{channel.currentProgram || (isRadio ? "Rádio Ao Vivo" : "Ao Vivo")}</p>
-                     </div>
                    </div>
                 </div>
                 
@@ -447,7 +446,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
               ${showControls || (isRadio && !isPlaying) ? 'opacity-100' : 'opacity-0'}
             `}
           >
-             {/* Left Controls (Volume) */}
+             {/* Left Controls */}
              <div className="flex items-center gap-3">
                 {isRadio && (
                     <button 
@@ -457,8 +456,6 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                     </button>
                 )}
-
-                {/* Hide volume slider for Radio since we don't control global audio volume here efficiently yet, OR keep it as dummy for now */}
                 <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto">
                   <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
                     {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -474,16 +471,9 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                     />
                   </div>
                 </div>
-                
-                {isRadio && (
-                    <div className="hidden sm:flex items-center gap-2 text-white/80 text-xs font-mono ml-2">
-                        <Music2 className="w-4 h-4 text-primary" />
-                        <span>Stereo HQ</span>
-                    </div>
-                )}
              </div>
 
-             {/* Right Controls (Modes) */}
+             {/* Right Controls */}
              <div className="flex items-center gap-2 pointer-events-auto">
                  <button 
                    onClick={handleCastClick}
@@ -517,21 +507,34 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           </div>
         </div>
 
-        {/* Footer Info & AI Description - Only visible when NOT in Cinema Mode */}
+        {/* Footer Info & EPG Description - Only visible when NOT in Cinema Mode */}
         {!isCinemaMode && (
           <div className="mt-6 p-5 bg-card rounded-xl border border-gray-800 shadow-lg">
              <div className="flex flex-col gap-4">
                
-               {/* Header Info */}
                <div>
                  <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-lg font-semibold text-white">Sobre o Canal</h3>
                     {loadingAi && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                  </div>
                  
-                 {/* AI Content */}
                  <div className="relative">
-                   {aiDescription ? (
+                   {epgData ? (
+                     <div className="prose prose-invert max-w-none">
+                       <div className="flex gap-2 items-start">
+                         <Calendar className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+                         <div>
+                            <h4 className="font-bold text-gray-200">{epgData.title}</h4>
+                            <p className="text-gray-400 text-sm leading-relaxed mt-1">
+                               {epgData.description || "Sem descrição disponível para este programa."}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2 font-mono">
+                                Início: {epgData.since} • Término: {epgData.until}
+                            </p>
+                         </div>
+                       </div>
+                     </div>
+                   ) : aiDescription ? (
                      <div className="prose prose-invert max-w-none">
                        <div className="flex gap-2 items-start">
                          <Sparkles className="w-5 h-5 text-yellow-500 mt-1 flex-shrink-0" />
@@ -542,32 +545,11 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                      </div>
                    ) : (
                      <p className="text-gray-400 text-sm italic">
-                       {loadingAi ? 'Gerando descrição inteligente...' : (channel.description || `Assistindo ${channel.name} ao vivo.`)}
+                       {channel.description || `Assistindo ${channel.name} ao vivo.`}
                      </p>
                    )}
                  </div>
                </div>
-
-               {/* Grounding Sources */}
-               {aiSources.length > 0 && (
-                 <div className="mt-2 pt-3 border-t border-gray-700/50">
-                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fontes Verificadas</p>
-                   <div className="flex flex-wrap gap-2">
-                     {aiSources.slice(0, 3).map((source, idx) => (
-                       <a 
-                         key={idx}
-                         href={source.uri}
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-full text-xs text-blue-400 hover:text-blue-300 transition-colors border border-gray-700"
-                       >
-                         <ExternalLink className="w-3 h-3" />
-                         <span className="truncate max-w-[150px]">{source.title}</span>
-                       </a>
-                     ))}
-                   </div>
-                 </div>
-               )}
 
                <div className="flex gap-4 pt-2">
                   <button onClick={() => setHasError(true)} className="text-sm text-red-400 hover:text-red-300 underline flex items-center gap-1">

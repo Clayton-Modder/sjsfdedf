@@ -8,6 +8,7 @@ import { Watch } from './pages/Watch';
 import { Settings } from './pages/Settings';
 import { RemoteControl } from './components/RemoteControl';
 import { RadioProvider } from './contexts/RadioContext';
+import { EPGProvider } from './contexts/EPGContext';
 import { GlobalRadioPlayer } from './components/GlobalRadioPlayer';
 
 const App: React.FC = () => {
@@ -90,7 +91,7 @@ const App: React.FC = () => {
           fetchRadios()
         ]);
         
-        // Inject "Favoritos", "Recentes", "Futebol" and "Rádios" categories
+        // Inject "Favoritos", "Recentes", "Futebol", "Rádios" and "Programação TV" categories
         const todosCat = channelsData.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
         const otherCats = channelsData.categories.filter(c => c.id !== 0);
         
@@ -98,6 +99,7 @@ const App: React.FC = () => {
           todosCat,
           { id: -3, name: "Futebol Ao vivo" },
           { id: -4, name: "Rádios Online" },
+          { id: -5, name: "Programação TV" },
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats
@@ -126,37 +128,39 @@ const App: React.FC = () => {
   }
 
   return (
-    <RadioProvider>
-      <HashRouter>
-        <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
-          <GlobalRadioPlayer />
-          <RemoteControl channels={channels} />
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <Home 
-                  channels={channels} 
-                  categories={categories}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                  history={history}
-                  radios={radios}
-                />
-              } 
-            />
-            <Route 
-              path="/watch/:id" 
-              element={<Watch channels={channels} radios={radios} addToHistory={addToHistory} />} 
-            />
-            <Route 
-              path="/settings" 
-              element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
-            />
-          </Routes>
-        </div>
-      </HashRouter>
-    </RadioProvider>
+    <EPGProvider>
+      <RadioProvider>
+        <HashRouter>
+          <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
+            <GlobalRadioPlayer />
+            <RemoteControl channels={channels} />
+            <Routes>
+              <Route 
+                path="/" 
+                element={
+                  <Home 
+                    channels={channels} 
+                    categories={categories}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    history={history}
+                    radios={radios}
+                  />
+                } 
+              />
+              <Route 
+                path="/watch/:id" 
+                element={<Watch channels={channels} radios={radios} addToHistory={addToHistory} />} 
+              />
+              <Route 
+                path="/settings" 
+                element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
+              />
+            </Routes>
+          </div>
+        </HashRouter>
+      </RadioProvider>
+    </EPGProvider>
   );
 };
 
