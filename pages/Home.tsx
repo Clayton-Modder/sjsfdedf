@@ -77,12 +77,18 @@ export const Home: React.FC<HomeProps> = ({ channels, categories, favorites, tog
   const filteredGames = useMemo(() => {
     if (activeCategoryId !== -3) return [];
     if (!searchQuery) return games;
-    return games.filter(g => 
-      g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      g.data.league.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.data.teams.home.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.data.teams.away.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    
+    const query = searchQuery.toLowerCase();
+    
+    return games.filter(g => {
+        // Safe optional chaining to prevent crashes on bad data
+        const titleMatch = g.title && g.title.toLowerCase().includes(query);
+        const leagueMatch = g.data?.league && g.data.league.toLowerCase().includes(query);
+        const homeMatch = g.data?.teams?.home?.name && g.data.teams.home.name.toLowerCase().includes(query);
+        const awayMatch = g.data?.teams?.away?.name && g.data.teams.away.name.toLowerCase().includes(query);
+        
+        return titleMatch || leagueMatch || homeMatch || awayMatch;
+    });
   }, [games, activeCategoryId, searchQuery]);
 
   const handleChannelSelect = (channel: Channel) => {

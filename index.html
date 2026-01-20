@@ -15,6 +15,13 @@
           originalWarn.apply(console, args);
         };
       })();
+
+      // Google Cast Initialization Callback
+      window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+          window.dispatchEvent(new Event('google-cast-ready'));
+        }
+      };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -56,6 +63,8 @@
   }
 }
 </script>
+<!-- Google Cast SDK -->
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 </head>
   <body class="bg-dark text-white min-h-screen antialiased">
     <div id="root"></div>

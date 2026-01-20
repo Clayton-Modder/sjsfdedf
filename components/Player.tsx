@@ -10,10 +10,12 @@ import {
   Expand,
   Minimize2,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Cast
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateChannelDescription, Source } from '../services/aiService';
+import { castMedia, requestSession, getCastSession } from '../services/castService';
 
 interface PlayerProps {
   channel: Channel;
@@ -135,6 +137,21 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
       }
     }, 3000);
   }, [isLoading]);
+
+  const handleCastClick = async () => {
+    let session = getCastSession();
+    if (!session) {
+      const connected = await requestSession();
+      if (connected) session = getCastSession();
+    }
+
+    if (session) {
+      // ATENÇÃO: Se a URL for um embed HTML, o Chromecast pode falhar.
+      // O ideal é passar uma URL .m3u8 ou .mp4 direta.
+      // Como este app usa embeds, estamos enviando a URL do embed, mas pode não funcionar na TV padrão.
+      castMedia(channel.url, channel.name, channel.image);
+    }
+  };
 
   return (
     <div className={`transition-all duration-500 ${
@@ -279,6 +296,15 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
              {/* Right Controls (Modes) */}
              <div className="flex items-center gap-2 pointer-events-auto">
+                {/* Cast Button */}
+               <button 
+                 onClick={handleCastClick}
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-blue-600 rounded-lg transition-colors"
+                 title="Transmitir para TV"
+               >
+                 <Cast className="w-5 h-5" />
+               </button>
+
                <button 
                  onClick={toggleCinemaMode}
                  className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors flex items-center gap-2"

@@ -5,6 +5,7 @@ import { Channel, Category } from './types';
 import { Loader2 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
+import { Settings } from './pages/Settings';
 import { RemoteControl } from './components/RemoteControl';
 
 const App: React.FC = () => {
@@ -12,6 +13,29 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
   
+  // Theme State
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('theme');
+      return saved ? saved === 'dark' : true; // Default to dark
+    } catch {
+      return true;
+    }
+  });
+
+  // Apply Theme
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(!isDark);
+
   // Favorites State with localStorage persistence
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
@@ -60,13 +84,13 @@ const App: React.FC = () => {
       try {
         const data = await fetchChannels();
         
-        // Inject "Favoritos", "Recentes", and "Jogos" categories
+        // Inject "Favoritos", "Recentes", and "Futebol" categories
         const todosCat = data.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
         const otherCats = data.categories.filter(c => c.id !== 0);
         
         const enhancedCategories = [
           todosCat,
-          { id: -3, name: "Futebol Ao vivo" }, // Renamed from Jogos
+          { id: -3, name: "Futebol Ao vivo" },
           { id: -1, name: "Favoritos" },
           { id: -2, name: "Recentes" },
           ...otherCats
@@ -95,7 +119,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-dark text-white font-sans relative">
+      <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
         <RemoteControl channels={channels} />
         <Routes>
           <Route 
@@ -113,6 +137,10 @@ const App: React.FC = () => {
           <Route 
             path="/watch/:id" 
             element={<Watch channels={channels} addToHistory={addToHistory} />} 
+          />
+          <Route 
+            path="/settings" 
+            element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
           />
         </Routes>
       </div>
