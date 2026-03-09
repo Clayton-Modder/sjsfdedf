@@ -25,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
             <Tv className="text-white w-6 h-6" />
           </div>
           <span className="text-xl font-bold tracking-tight hidden sm:block text-gray-900 dark:text-white">
-            Mega Canais <span className="text-primary">TV</span>
+            TV Online <span className="text-primary">HD</span>
           </span>
         </div>
 
