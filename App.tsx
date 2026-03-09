@@ -120,7 +120,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-dark flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-        <h1 className="text-xl font-bold text-white tracking-widest">Mega Canais <span className="text-primary">TV</span></h1>
+        <h1 className="text-xl font-bold text-white tracking-widest">TV Online <span className="text-primary">HD</span></h1>
         <p className="text-gray-500 mt-2 text-sm">Carregando programação...</p>
       </div>
     );
