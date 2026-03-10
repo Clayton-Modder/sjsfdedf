@@ -3,9 +3,9 @@ import { EPGChannel, EPGProgram } from '../types';
 // Lista de URLs XMLTV para tentar (Canais Brasileiros)
 const EPG_URLS = [
   'https://iptv-org.github.io/epg/guides/br.xml',
+  'https://raw.githubusercontent.com/LITUATUI/IPTV-Brasil/master/epg.xml',
   'https://epg.pw/xmltv/guide_br.xml',
-  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml',
-  'https://raw.githubusercontent.com/LITUATUI/IPTV-Brasil/master/epg.xml'
+  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml'
 ];
 
 // Lista de proxies para contornar bloqueios de CORS e Mixed Content
@@ -17,7 +17,11 @@ const PROXIES = [
   // 3. AllOrigins: Fallback robusto
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   // 4. CodeTabs
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  // 5. Proxy.cors.sh
+  (url: string) => `https://proxy.cors.sh/${url}`,
+  // 6. ThingProxy
+  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
 ];
 
 /**
@@ -97,7 +101,7 @@ export const fetchEPG = async (): Promise<EPGChannel[]> => {
  */
 async function tryFetch(url: string): Promise<EPGChannel[] | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // Aumentado para 30s
 
   try {
     const response = await fetch(url, { signal: controller.signal });

