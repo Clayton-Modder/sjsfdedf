@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
+import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import fs from "fs-extra";
 import bcrypt from "bcryptjs";
@@ -6,221 +7,313 @@ import jwt from "jsonwebtoken";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const app = express();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const USERS_FILE = path.join("/tmp", "contas.json");
-const CHANNELS_FILE = path.join("/tmp", "appcanais.json");
+const USERS_FILE = path.join(__dirname, "contas.json");
+const CHANNELS_FILE = path.join(__dirname, "db.json");
+const SECRET_KEY = "megatv-secret-key"; 
 
-const SECRET_KEY = "megatv-secret-key";
+// Import initial data for first run
+import { initialData } from "./services/initialData.ts";
 
-app.use(cors());
-app.use(express.json());
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
 
-async function ensureFiles() {
+  app.use(cors());
+  app.use(express.json());
 
-  if (!(await fs.pathExists(USERS_FILE))) {
+  // Ensure files exist
+  if (!await fs.pathExists(USERS_FILE)) {
     await fs.writeJson(USERS_FILE, []);
   }
-
-  if (!(await fs.pathExists(CHANNELS_FILE))) {
-    await fs.writeJson(CHANNELS_FILE, {
-      categories: [],
-      channels: []
-    });
+  
+  if (!await fs.pathExists(CHANNELS_FILE) || (await fs.readFile(CHANNELS_FILE, 'utf8')).trim() === "") {
+    await fs.writeJson(CHANNELS_FILE, initialData);
   }
 
+  // Create admin user if not exists
   const users = await fs.readJson(USERS_FILE);
-
   const adminEmail = "admin@tvonlinehd.com";
-
-  if (!users.find((u:any) => u.email === adminEmail)) {
-
+  if (!users.find((u: any) => u.email === adminEmail)) {
     const hashedPassword = await bcrypt.hash("admin", 10);
-
     users.push({
       id: "admin",
       username: "Administrador",
       email: adminEmail,
       password: hashedPassword,
-      role: "admin",
+      profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
       xp: 999,
       level: 99,
-      favorites: []
+      lastXpClaim: 0,
+      favorites: [],
+      role: "admin"
     });
-
     await fs.writeJson(USERS_FILE, users);
-  }
-}
-
-await ensureFiles();
-
-function authenticateToken(req: Request, res: Response, next: NextFunction) {
-
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Token necessário" });
+    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
   }
 
-  jwt.verify(token, SECRET_KEY, (err, user) => {
+  // Auth Middleware
+  const authenticateToken = (req: any, res: any, next: any) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    if (err) {
-      return res.status(403).json({ message: "Token inválido" });
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, SECRET_KEY, (err: any, user: any) => {
+      if (err) return res.sendStatus(403);
+      req.user = user;
+      next();
+    });
+  };
+
+  const isAdmin = (req: any, res: any, next: any) => {
+    if (req.user && req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ message: "Acesso negado. Apenas administradores." });
     }
+  };
 
-    (req as any).user = user;
-    next();
-  });
-}
+  // --- API Routes ---
 
-function isAdmin(req: Request, res: Response, next: NextFunction) {
-
-  const user = (req as any).user;
-
-  if (user && user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ message: "Acesso apenas admin" });
-  }
-}
-
-app.post("/api/auth/register", async (req: Request, res: Response) => {
-
-  try {
-
+  // Register
+  app.post("/api/auth/register", async (req, res) => {
     const { username, email, password } = req.body;
-
     const users = await fs.readJson(USERS_FILE);
 
-    if (users.find((u:any) => u.email === email)) {
+    if (users.find((u: any) => u.email === email)) {
       return res.status(400).json({ message: "Email já cadastrado" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = {
       id: Date.now().toString(),
       username,
       email,
       password: hashedPassword,
+      profilePic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       xp: 0,
       level: 1,
+      lastXpClaim: 0,
       favorites: []
     };
 
     users.push(newUser);
+    await fs.writeJson(USERS_FILE, users);
+    // Also save to the other file requested by user
+    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+
+    res.status(201).json({ message: "Usuário criado com sucesso" });
+  });
+
+  // Login
+  app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body;
+    const users = await fs.readJson(USERS_FILE);
+    const user = users.find((u: any) => u.email === email);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(400).json({ message: "Credenciais inválidas" });
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'user' }, SECRET_KEY, { expiresIn: '7d' });
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ token, user: userWithoutPassword });
+  });
+
+  // Get Profile
+  app.get("/api/user/profile", authenticateToken, async (req: any, res) => {
+    const users = await fs.readJson(USERS_FILE);
+    const user = users.find((u: any) => u.id === req.user.id);
+    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  // Update Profile
+  app.put("/api/user/profile", authenticateToken, async (req: any, res) => {
+    const { username, profilePic } = req.body;
+    const users = await fs.readJson(USERS_FILE);
+    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
+
+    if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    if (username) users[userIndex].username = username;
+    if (profilePic) users[userIndex].profilePic = profilePic;
 
     await fs.writeJson(USERS_FILE, users);
+    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
 
-    res.json({ message: "Usuário criado" });
+    const { password: _, ...userWithoutPassword } = users[userIndex];
+    res.json(userWithoutPassword);
+  });
 
-  } catch {
-    res.status(500).json({ message: "Erro no registro" });
-  }
-
-});
-
-app.post("/api/auth/login", async (req: Request, res: Response) => {
-
-  try {
-
-    const { email, password } = req.body;
-
+  // Toggle Favorite
+  app.post("/api/user/favorites", authenticateToken, async (req: any, res) => {
+    const { channelId } = req.body;
     const users = await fs.readJson(USERS_FILE);
+    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
 
-    const user = users.find((u:any) => u.email === email);
+    if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
 
-    if (!user) {
-      return res.status(400).json({ message: "Credenciais inválidas" });
+    const favorites = users[userIndex].favorites || [];
+    const favIndex = favorites.indexOf(channelId);
+
+    if (favIndex === -1) {
+      favorites.push(channelId);
+    } else {
+      favorites.splice(favIndex, 1);
     }
 
-    const valid = await bcrypt.compare(password, user.password);
+    users[userIndex].favorites = favorites;
+    await fs.writeJson(USERS_FILE, users);
+    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
 
-    if (!valid) {
-      return res.status(400).json({ message: "Credenciais inválidas" });
+    res.json({ favorites });
+  });
+
+  // Claim XP
+  app.post("/api/user/claim-xp", authenticateToken, async (req: any, res) => {
+    const users = await fs.readJson(USERS_FILE);
+    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
+
+    if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    const now = Date.now();
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+    if (now - users[userIndex].lastXpClaim < TWELVE_HOURS) {
+      const remaining = TWELVE_HOURS - (now - users[userIndex].lastXpClaim);
+      const hours = Math.floor(remaining / (60 * 60 * 1000));
+      const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+      return res.status(400).json({ message: `Aguarde mais ${hours}h ${minutes}m para ganhar mais XP.` });
     }
 
-    const token = jwt.sign(
-      { id: user.id, role: user.role || "user" },
-      SECRET_KEY,
-      { expiresIn: "7d" }
-    );
+    users[userIndex].xp += 4;
+    users[userIndex].lastXpClaim = now;
+    
+    // Level up logic: every 20 XP = 1 level
+    users[userIndex].level = Math.floor(users[userIndex].xp / 20) + 1;
 
-    const { password: _, ...userData } = user;
+    await fs.writeJson(USERS_FILE, users);
+    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
 
-    res.json({ token, user: userData });
+    res.json({ xp: users[userIndex].xp, level: users[userIndex].level, lastXpClaim: users[userIndex].lastXpClaim });
+  });
 
-  } catch {
-    res.status(500).json({ message: "Erro no login" });
-  }
+  // --- Admin API ---
 
-});
+  // Proxy API for EPG (Bypass CORS)
+  app.get("/api/proxy", async (req, res) => {
+    const { url } = req.query;
+    if (!url) return res.status(400).send("URL is required");
 
-app.get("/api/data", async (_req: Request, res: Response) => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch(url as string, { 
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': '*/*',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+      });
+      clearTimeout(timeout);
+      
+      const contentType = response.headers.get("Content-Type");
+      if (contentType) res.set("Content-Type", contentType);
+      
+      // For XMLTV, we want to ensure it's treated as text/xml or similar
+      if (url.toString().includes('.xml') || url.toString().includes('xmltv')) {
+        res.set("Content-Type", "text/xml; charset=utf-8");
+      }
 
-  try {
+      const data = await response.text();
+      res.send(data);
+    } catch (error: any) {
+      console.error("Proxy error for URL:", url, error.message);
+      res.status(500).json({ message: `Erro ao buscar URL: ${error.message}` });
+    }
+  });
 
+  // Public Data Route
+  app.get("/api/data", async (_req, res) => {
+    try {
+      if (!await fs.pathExists(CHANNELS_FILE)) {
+        await fs.writeJson(CHANNELS_FILE, initialData);
+      }
+      const data = await fs.readJson(CHANNELS_FILE);
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error loading data:", error.message);
+      res.status(500).json({ message: "Erro ao carregar dados do servidor", error: error.message });
+    }
+  });
+
+  // Get All Channels & Categories (Admin)
+  app.get("/api/admin/data", authenticateToken, isAdmin, async (_req, res) => {
     const data = await fs.readJson(CHANNELS_FILE);
-
     res.json(data);
+  });
 
-  } catch {
-
-    res.json({
-      categories: [],
-      channels: []
-    });
-
-  }
-
-});
-
-app.post("/api/admin/channels", authenticateToken, isAdmin, async (req: Request, res: Response) => {
-
-  try {
-
-    const channel = req.body;
-
+  // Update Categories
+  app.put("/api/admin/categories", authenticateToken, isAdmin, async (req, res) => {
+    const { categories } = req.body;
     const data = await fs.readJson(CHANNELS_FILE);
-
-    data.channels.push(channel);
-
+    data.categories = categories;
     await fs.writeJson(CHANNELS_FILE, data);
+    res.json({ message: "Categorias atualizadas" });
+  });
 
+  // Update Channels
+  app.put("/api/admin/channels", authenticateToken, isAdmin, async (req, res) => {
+    const { channels } = req.body;
+    const data = await fs.readJson(CHANNELS_FILE);
+    data.channels = channels;
+    await fs.writeJson(CHANNELS_FILE, data);
+    res.json({ message: "Canais atualizados" });
+  });
+
+  // Add Channel
+  app.post("/api/admin/channels", authenticateToken, isAdmin, async (req, res) => {
+    const channel = req.body;
+    const data = await fs.readJson(CHANNELS_FILE);
+    data.channels.push(channel);
+    await fs.writeJson(CHANNELS_FILE, data);
     res.json({ message: "Canal adicionado", channel });
+  });
 
-  } catch {
-    res.status(500).json({ message: "Erro ao adicionar canal" });
+  // Delete Channel
+  app.delete("/api/admin/channels/:id", authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const data = await fs.readJson(CHANNELS_FILE);
+    data.channels = data.channels.filter((c: any) => c.id !== id);
+    await fs.writeJson(CHANNELS_FILE, data);
+    res.json({ message: "Canal removido" });
+  });
+
+  // --- Vite Middleware ---
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
   }
 
-});
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
 
-app.get("/api/proxy", async (req: Request, res: Response) => {
-
-  try {
-
-    const url = req.query.url as string;
-
-    if (!url) {
-      return res.status(400).json({ message: "URL obrigatória" });
-    }
-
-    const response = await fetch(url);
-
-    const text = await response.text();
-
-    res.setHeader("Content-Type", "application/xml");
-
-    res.send(text);
-
-  } catch {
-    res.status(500).json({ message: "Erro ao buscar EPG" });
-  }
-
-});
-
-export default app;
+startServer();

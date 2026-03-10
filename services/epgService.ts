@@ -2,9 +2,10 @@ import { EPGChannel, EPGProgram } from '../types';
 
 // Lista de URLs XMLTV para tentar (Canais Brasileiros)
 const EPG_URLS = [
-  'http://nocable.cc:8080/xmltv.php?username=J0WfUK&password=016294',
   'https://iptv-org.github.io/epg/guides/br.xml',
-  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml'
+  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml',
+  'https://epg.pw/xmltv/guide_br.xml',
+  'http://nocable.cc:8080/xmltv.php?username=J0WfUK&password=016294'
 ];
 
 // Lista de proxies para contornar bloqueios de CORS e Mixed Content
@@ -13,12 +14,12 @@ const PROXIES = [
   (url: string) => `/api/proxy?url=${encodeURIComponent(url)}`,
   // 2. CorsProxy.io: Rápido e confiável
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  // 3. AllOrigins: Fallback robusto (com timestamp para evitar cache antigo)
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&t=${Date.now()}`,
-  // 4. CodeTabs: Ótima alternativa para APIs públicas
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  // 5. ThingProxy: Outra opção de fallback
-  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+  // 3. AllOrigins: Fallback robusto
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  // 4. Cloudflare Worker Proxy (se disponível)
+  (url: string) => `https://jsproxy.okis.dev/${url}`,
+  // 5. CodeTabs
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
 ];
 
 /**
@@ -77,12 +78,13 @@ export const fetchEPG = async (): Promise<EPGChannel[]> => {
 
     // Tenta cada proxy na lista
     for (const createProxyUrl of PROXIES) {
+      const proxyUrl = createProxyUrl(epgUrl);
       try {
-        const proxyUrl = createProxyUrl(epgUrl);
+        console.log(`[EPG] Tentando via proxy: ${proxyUrl.split('?')[0]}...`);
         const result = await tryFetch(proxyUrl);
         if (result && result.length > 0) return result;
       } catch (error) {
-        console.warn(`[EPG] Erro no proxy para ${epgUrl}:`, error);
+        // Erros já são logados no tryFetch
       }
     }
   }

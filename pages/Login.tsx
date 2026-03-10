@@ -29,10 +29,11 @@ export const Login: React.FC = () => {
         login(data.token, data.user);
         navigate('/');
       } else {
-        setError(data.message || 'Erro ao fazer login');
+        setError(data.message || 'Credenciais inválidas ou erro no servidor');
       }
-    } catch (err) {
-      setError('Erro de conexão com o servidor');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError('Erro de conexão: Verifique se o servidor está online.');
     } finally {
       setIsLoading(false);
     }

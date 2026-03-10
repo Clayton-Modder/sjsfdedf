@@ -27,10 +27,11 @@ export const Register: React.FC = () => {
       if (response.ok) {
         navigate('/login');
       } else {
-        setError(data.message || 'Erro ao criar conta');
+        setError(data.message || 'Erro ao criar conta: Verifique os dados informados.');
       }
-    } catch (err) {
-      setError('Erro de conexão com o servidor');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError('Erro de conexão: O servidor pode estar offline.');
     } finally {
       setIsLoading(false);
     }
