@@ -10,12 +10,12 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const USERS_FILE = path.join(__dirname, "contas.json");
-const CHANNELS_FILE = path.join(__dirname, "db.json");
+const USERS_FILE = path.join(__dirname, "..", "contas.json");
+const CHANNELS_FILE = path.join(__dirname, "..", "db.json");
 const SECRET_KEY = "megatv-secret-key"; 
 
 // Import initial data for first run
-import { initialData } from "./services/initialData.ts";
+import { initialData } from "../services/initialData.ts";
 
 async function startServer() {
   const app = express();
@@ -36,7 +36,7 @@ async function startServer() {
   // Create admin user if not exists
   const users = await fs.readJson(USERS_FILE);
   const adminEmail = "admin@tvonlinehd.com";
-  if (!users.find((u: any) => u.email === adminEmail)) {
+  if (!users.find((u) => u.email === adminEmail)) {
     const hashedPassword = await bcrypt.hash("admin", 10);
     users.push({
       id: "admin",
@@ -51,24 +51,24 @@ async function startServer() {
       role: "admin"
     });
     await fs.writeJson(USERS_FILE, users);
-    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+    await fs.writeJson(path.join(__dirname, "..", "contasregistrarda.json"), users);
   }
 
   // Auth Middleware
-  const authenticateToken = (req: any, res: any, next: any) => {
+  const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, SECRET_KEY, (err: any, user: any) => {
+    jwt.verify(token, SECRET_KEY, (err, user) => {
       if (err) return res.sendStatus(403);
       req.user = user;
       next();
     });
   };
 
-  const isAdmin = (req: any, res: any, next: any) => {
+  const isAdmin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
       next();
     } else {
@@ -83,7 +83,7 @@ async function startServer() {
     const { username, email, password } = req.body;
     const users = await fs.readJson(USERS_FILE);
 
-    if (users.find((u: any) => u.email === email)) {
+    if (users.find((u) => u.email === email)) {
       return res.status(400).json({ message: "Email já cadastrado" });
     }
 
@@ -103,7 +103,7 @@ async function startServer() {
     users.push(newUser);
     await fs.writeJson(USERS_FILE, users);
     // Also save to the other file requested by user
-    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+    await fs.writeJson(path.join(__dirname, "..", "contasregistrarda.json"), users);
 
     res.status(201).json({ message: "Usuário criado com sucesso" });
   });
@@ -112,7 +112,7 @@ async function startServer() {
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
     const users = await fs.readJson(USERS_FILE);
-    const user = users.find((u: any) => u.email === email);
+    const user = users.find((u) => u.email === email);
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(400).json({ message: "Credenciais inválidas" });
@@ -124,9 +124,9 @@ async function startServer() {
   });
 
   // Get Profile
-  app.get("/api/user/profile", authenticateToken, async (req: any, res) => {
+  app.get("/api/user/profile", authenticateToken, async (req, res) => {
     const users = await fs.readJson(USERS_FILE);
-    const user = users.find((u: any) => u.id === req.user.id);
+    const user = users.find((u) => u.id === req.user.id);
     if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
     const { password: _, ...userWithoutPassword } = user;
@@ -134,10 +134,10 @@ async function startServer() {
   });
 
   // Update Profile
-  app.put("/api/user/profile", authenticateToken, async (req: any, res) => {
+  app.put("/api/user/profile", authenticateToken, async (req, res) => {
     const { username, profilePic } = req.body;
     const users = await fs.readJson(USERS_FILE);
-    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
+    const userIndex = users.findIndex((u) => u.id === req.user.id);
 
     if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
 
@@ -145,17 +145,17 @@ async function startServer() {
     if (profilePic) users[userIndex].profilePic = profilePic;
 
     await fs.writeJson(USERS_FILE, users);
-    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+    await fs.writeJson(path.join(__dirname, "..", "contasregistrarda.json"), users);
 
     const { password: _, ...userWithoutPassword } = users[userIndex];
     res.json(userWithoutPassword);
   });
 
   // Toggle Favorite
-  app.post("/api/user/favorites", authenticateToken, async (req: any, res) => {
+  app.post("/api/user/favorites", authenticateToken, async (req, res) => {
     const { channelId } = req.body;
     const users = await fs.readJson(USERS_FILE);
-    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
+    const userIndex = users.findIndex((u) => u.id === req.user.id);
 
     if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
 
@@ -170,15 +170,15 @@ async function startServer() {
 
     users[userIndex].favorites = favorites;
     await fs.writeJson(USERS_FILE, users);
-    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+    await fs.writeJson(path.join(__dirname, "..", "contasregistrarda.json"), users);
 
     res.json({ favorites });
   });
 
   // Claim XP
-  app.post("/api/user/claim-xp", authenticateToken, async (req: any, res) => {
+  app.post("/api/user/claim-xp", authenticateToken, async (req, res) => {
     const users = await fs.readJson(USERS_FILE);
-    const userIndex = users.findIndex((u: any) => u.id === req.user.id);
+    const userIndex = users.findIndex((u) => u.id === req.user.id);
 
     if (userIndex === -1) return res.status(404).json({ message: "Usuário não encontrado" });
 
@@ -199,7 +199,7 @@ async function startServer() {
     users[userIndex].level = Math.floor(users[userIndex].xp / 20) + 1;
 
     await fs.writeJson(USERS_FILE, users);
-    await fs.writeJson(path.join(__dirname, "contasregistrarda.json"), users);
+    await fs.writeJson(path.join(__dirname, "..", "contasregistrarda.json"), users);
 
     res.json({ xp: users[userIndex].xp, level: users[userIndex].level, lastXpClaim: users[userIndex].lastXpClaim });
   });
@@ -215,7 +215,7 @@ async function startServer() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000); // Increased timeout
       
-      const response = await fetch(url as string, { 
+      const response = await fetch(url, { 
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -244,7 +244,7 @@ async function startServer() {
 
       const data = await response.text();
       res.send(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Proxy error for URL:", url, error.message);
       res.status(500).json({ message: `Erro ao buscar URL via proxy: ${error.message}` });
     }
@@ -258,7 +258,7 @@ async function startServer() {
       }
       const data = await fs.readJson(CHANNELS_FILE);
       res.json(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error loading data:", error.message);
       res.status(500).json({ message: "Erro ao carregar dados do servidor", error: error.message });
     }
@@ -301,7 +301,7 @@ async function startServer() {
   app.delete("/api/admin/channels/:id", authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const data = await fs.readJson(CHANNELS_FILE);
-    data.channels = data.channels.filter((c: any) => c.id !== id);
+    data.channels = data.channels.filter((c) => c.id !== id);
     await fs.writeJson(CHANNELS_FILE, data);
     res.json({ message: "Canal removido" });
   });
@@ -314,9 +314,9 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    app.use(express.static(path.join(__dirname, "..", "dist")));
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
     });
   }
 

@@ -3,9 +3,9 @@ import { EPGChannel, EPGProgram } from '../types';
 // Lista de URLs XMLTV para tentar (Canais Brasileiros)
 const EPG_URLS = [
   'https://iptv-org.github.io/epg/guides/br.xml',
-  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml',
   'https://epg.pw/xmltv/guide_br.xml',
-  'http://nocable.cc:8080/xmltv.php?username=J0WfUK&password=016294'
+  'https://iptv-org.github.io/epg/guides/br/sky.com.br.xml',
+  'https://raw.githubusercontent.com/LITUATUI/IPTV-Brasil/master/epg.xml'
 ];
 
 // Lista de proxies para contornar bloqueios de CORS e Mixed Content
@@ -17,9 +17,7 @@ const PROXIES = [
   // 3. AllOrigins: Fallback robusto
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   // 4. CodeTabs
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  // 5. Proxy.cors.sh (Fallback alternativo)
-  (url: string) => `https://proxy.cors.sh/${url}`
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
 ];
 
 /**
