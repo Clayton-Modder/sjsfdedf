@@ -232,8 +232,10 @@ async function startServer() {
 
     try {
       const urlString = Array.isArray(targetUrl) ? targetUrl[0].toString() : targetUrl.toString();
+      console.log(`[Proxy] Fetching: ${urlString}`);
+      
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60s
+      const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
       
       const response = await fetch(urlString, { 
         signal: controller.signal,
@@ -242,12 +244,14 @@ async function startServer() {
           'Accept': 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5',
           'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
           'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Accept-Encoding': 'gzip, deflate, br'
         }
       });
       clearTimeout(timeout);
       
       if (!response.ok) {
+        console.warn(`[Proxy] Remote server returned ${response.status} for ${urlString}`);
         return res.status(response.status).json({ 
           message: `Remote server returned ${response.status}`,
           status: response.status 
@@ -262,10 +266,12 @@ async function startServer() {
         res.set("Content-Type", "text/xml; charset=utf-8");
       }
 
-      const data = await response.text();
+      const buffer = await response.arrayBuffer();
+      const data = Buffer.from(buffer);
+      console.log(`[Proxy] Success: ${urlString} (${data.length} bytes)`);
       res.send(data);
     } catch (error) {
-      console.error("Proxy error for URL:", targetUrl, error.message);
+      console.error("[Proxy] Error for URL:", targetUrl, error.message);
       res.status(500).json({ message: `Erro ao buscar URL via proxy: ${error.message}` });
     }
   });

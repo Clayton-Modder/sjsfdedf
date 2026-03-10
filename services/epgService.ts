@@ -15,13 +15,7 @@ const PROXIES = [
   // 2. CorsProxy.io: Rápido e confiável
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   // 3. AllOrigins: Fallback robusto
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  // 4. CodeTabs
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  // 5. Proxy.cors.sh
-  (url: string) => `https://proxy.cors.sh/${url}`,
-  // 6. ThingProxy
-  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
 ];
 
 /**
@@ -64,30 +58,34 @@ const parseXMLTVDate = (dateStr: string): Date => {
 export const fetchEPG = async (): Promise<EPGChannel[]> => {
   // Tenta cada URL na lista
   for (const epgUrl of EPG_URLS) {
-    // Para cada URL, tenta os proxies se for HTTP ou se falhar direto
-    const isHttp = epgUrl.startsWith('http:');
-    
-    // Se for HTTPS, tenta direto primeiro
-    if (!isHttp) {
-      try {
-        console.log(`[EPG] Tentando carregar direto: ${epgUrl}`);
-        const result = await tryFetch(epgUrl);
-        if (result && result.length > 0) return result;
-      } catch (e) {
-        console.warn(`[EPG] Falha ao carregar direto ${epgUrl}, tentando via proxy...`);
-      }
-    }
-
     // Tenta cada proxy na lista
     for (const createProxyUrl of PROXIES) {
       const proxyUrl = createProxyUrl(epgUrl);
       try {
         const proxyName = proxyUrl.includes('/api/proxy') ? 'Local Server Proxy' : proxyUrl.split('/')[2];
         console.log(`[EPG] Tentando via ${proxyName} para: ${epgUrl}`);
-        const result = await tryFetch(proxyUrl);
-        if (result && result.length > 0) return result;
+        
+        // Se for o proxy local, tentamos até 2 vezes
+        const maxRetries = proxyUrl.includes('/api/proxy') ? 2 : 1;
+        for (let i = 0; i < maxRetries; i++) {
+          if (i > 0) console.log(`[EPG] Retentando via ${proxyName} (${i+1}/${maxRetries})...`);
+          const result = await tryFetch(proxyUrl);
+          if (result && result.length > 0) return result;
+          if (i < maxRetries - 1) await new Promise(r => setTimeout(r, 2000));
+        }
       } catch (error) {
         // Erros já são logados no tryFetch
+      }
+    }
+
+    // Se falhar todos os proxies, tenta direto como último recurso (se for HTTPS)
+    if (epgUrl.startsWith('https:')) {
+      try {
+        console.log(`[EPG] Tentando carregar direto como último recurso: ${epgUrl}`);
+        const result = await tryFetch(epgUrl);
+        if (result && result.length > 0) return result;
+      } catch (e) {
+        // Ignora erro direto
       }
     }
   }
