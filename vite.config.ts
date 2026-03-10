@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'Mega Canais TV',
+        name: 'TV Online HD',
         short_name: 'Mega Canais',
         description: 'Assista TV Online Grátis',
         theme_color: '#0f172a',
