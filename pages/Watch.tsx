@@ -82,7 +82,7 @@ export const Watch: React.FC<WatchProps> = ({ channels, radios, addToHistory }) 
               <Tv className="text-white w-5 h-5" />
             </div>
             <span className="text-lg font-bold tracking-tight">
-              Mega Canais <span className="text-primary">TV</span>
+              TV Online <span className="text-primary">HD</span>
             </span>
           </div>
         </div>
