@@ -10,16 +10,16 @@ const EPG_URLS = [
 
 // Lista de proxies para contornar bloqueios de CORS e Mixed Content
 const PROXIES = [
-  // 1. Local Proxy (Bypass CORS via Server) - Mais confiável
+  // 1. Local Proxy (Bypass CORS via Server) - O mais confiável pois roda no backend
   (url: string) => `/api/proxy?url=${encodeURIComponent(url)}`,
   // 2. CorsProxy.io: Rápido e confiável
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   // 3. AllOrigins: Fallback robusto
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  // 4. Cloudflare Worker Proxy (se disponível)
-  (url: string) => `https://jsproxy.okis.dev/${url}`,
-  // 5. CodeTabs
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+  // 4. CodeTabs
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  // 5. Proxy.cors.sh (Fallback alternativo)
+  (url: string) => `https://proxy.cors.sh/${url}`
 ];
 
 /**
@@ -80,7 +80,8 @@ export const fetchEPG = async (): Promise<EPGChannel[]> => {
     for (const createProxyUrl of PROXIES) {
       const proxyUrl = createProxyUrl(epgUrl);
       try {
-        console.log(`[EPG] Tentando via proxy: ${proxyUrl.split('?')[0]}...`);
+        const proxyName = proxyUrl.includes('/api/proxy') ? 'Local Server Proxy' : proxyUrl.split('/')[2];
+        console.log(`[EPG] Tentando via ${proxyName} para: ${epgUrl}`);
         const result = await tryFetch(proxyUrl);
         if (result && result.length > 0) return result;
       } catch (error) {

@@ -209,27 +209,36 @@ async function startServer() {
   // Proxy API for EPG (Bypass CORS)
   app.get("/api/proxy", async (req, res) => {
     const { url } = req.query;
-    if (!url) return res.status(400).send("URL is required");
+    if (!url) return res.status(400).json({ message: "URL is required" });
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      const timeout = setTimeout(() => controller.abort(), 45000); // Increased timeout
       
       const response = await fetch(url as string, { 
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': '*/*',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
       clearTimeout(timeout);
       
+      if (!response.ok) {
+        return res.status(response.status).json({ 
+          message: `Remote server returned ${response.status}`,
+          status: response.status 
+        });
+      }
+
       const contentType = response.headers.get("Content-Type");
       if (contentType) res.set("Content-Type", contentType);
       
       // For XMLTV, we want to ensure it's treated as text/xml or similar
-      if (url.toString().includes('.xml') || url.toString().includes('xmltv')) {
+      if (url.toString().toLowerCase().includes('.xml') || url.toString().toLowerCase().includes('xmltv')) {
         res.set("Content-Type", "text/xml; charset=utf-8");
       }
 
@@ -237,7 +246,7 @@ async function startServer() {
       res.send(data);
     } catch (error: any) {
       console.error("Proxy error for URL:", url, error.message);
-      res.status(500).json({ message: `Erro ao buscar URL: ${error.message}` });
+      res.status(500).json({ message: `Erro ao buscar URL via proxy: ${error.message}` });
     }
   });
 
