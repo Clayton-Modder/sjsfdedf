@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Channel } from '../types';
 import { Tv, CornerDownLeft } from 'lucide-react';
 
@@ -12,7 +12,6 @@ export const RemoteControl: React.FC<RemoteControlProps> = ({ channels }) => {
   const [targetChannel, setTargetChannel] = useState<Channel | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     // Determine potential channel based on current buffer
@@ -84,7 +83,6 @@ export const RemoteControl: React.FC<RemoteControlProps> = ({ channels }) => {
     const index = parseInt(inputBuffer) - 1;
     
     // Clear buffer immediately to hide UI
-    const currentBuffer = inputBuffer; // Capture for logic
     setInputBuffer("");
     
     if (index >= 0 && index < channels.length) {

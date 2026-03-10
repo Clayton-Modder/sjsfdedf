@@ -10,7 +10,7 @@ export default defineConfig({
       injectRegister: 'auto',
       manifest: {
         name: 'TV Online HD',
-        short_name: 'Mega Canais',
+        short_name: 'TV Online HD',
         description: 'Assista TV Online Grátis',
         theme_color: '#0f172a',
         background_color: '#0f172a',

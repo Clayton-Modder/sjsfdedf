@@ -8,7 +8,7 @@ interface InstallAppModalProps {
   onConfirm: () => void; // Download app
 }
 
-export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClose, onDismiss, onConfirm }) => {
+export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onDismiss, onConfirm }) => {
   if (!isOpen) return null;
 
   return (

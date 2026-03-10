@@ -1,6 +1,6 @@
 import React from 'react';
 import { Game, Channel } from '../types';
-import { Play, Clock, Trophy, Tv } from 'lucide-react';
+import { Clock, Trophy, Tv } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface GameListProps {

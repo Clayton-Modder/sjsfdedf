@@ -1,21 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import { fetchChannels, fetchRadios } from './services/dataService';
-import { Channel, Category, Radio } from './types';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { fetchRadios } from './services/dataService';
+import { Radio } from './types';
 import { Loader2 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Watch } from './pages/Watch';
 import { Settings } from './pages/Settings';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Profile } from './pages/Profile';
+import Admin from './pages/Admin';
 import { RemoteControl } from './components/RemoteControl';
 import { RadioProvider } from './contexts/RadioContext';
 import { EPGProvider } from './contexts/EPGContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataProvider, useData } from './contexts/DataContext';
 import { GlobalRadioPlayer } from './components/GlobalRadioPlayer';
+import { Toaster } from 'react-hot-toast';
 
-const App: React.FC = () => {
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Navigate to="/login" />;
+  if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
+  return <>{children}</>;
+};
+
+const AppContent: React.FC = () => {
+  const { user, token, updateUser } = useAuth();
+  const { channels, categories, isLoading: isDataLoading } = useData();
   const [radios, setRadios] = useState<Radio[]>([]);
-  const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
+  const [isRadiosLoading, setIsRadiosLoading] = useState<boolean>(true);
   
   // Theme State
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -40,16 +55,22 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setIsDark(!isDark);
 
-  // Favorites State with localStorage persistence
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Error loading favorites", e);
-      return [];
+  // Favorites State
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  // Sync favorites with user data
+  useEffect(() => {
+    if (user) {
+      setFavorites(user.favorites || []);
+    } else {
+      try {
+        const saved = localStorage.getItem('favorites');
+        setFavorites(saved ? JSON.parse(saved) : []);
+      } catch {
+        setFavorites([]);
+      }
     }
-  });
+  }, [user]);
 
   // History State with localStorage persistence
   const [history, setHistory] = useState<string[]>(() => {
@@ -62,15 +83,35 @@ const App: React.FC = () => {
     }
   });
 
-  const toggleFavorite = (channelId: string) => {
-    setFavorites(prev => {
-      const newFavs = prev.includes(channelId)
-        ? prev.filter(id => id !== channelId)
-        : [...prev, channelId];
-      
-      localStorage.setItem('favorites', JSON.stringify(newFavs));
-      return newFavs;
-    });
+  const toggleFavorite = async (channelId: string) => {
+    if (user && token) {
+      try {
+        const response = await fetch('/api/user/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ channelId }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setFavorites(data.favorites);
+          updateUser({ favorites: data.favorites });
+        }
+      } catch (error) {
+        console.error("Error syncing favorite", error);
+      }
+    } else {
+      setFavorites(prev => {
+        const newFavs = prev.includes(channelId)
+          ? prev.filter(id => id !== channelId)
+          : [...prev, channelId];
+        
+        localStorage.setItem('favorites', JSON.stringify(newFavs));
+        return newFavs;
+      });
+    }
   };
 
   const addToHistory = useCallback((channelId: string) => {
@@ -82,41 +123,22 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // Initial Data Fetch
+  // Initial Radios Fetch
   useEffect(() => {
-    const loadData = async () => {
+    const loadRadios = async () => {
       try {
-        const [channelsData, radiosData] = await Promise.all([
-          fetchChannels(),
-          fetchRadios()
-        ]);
-        
-        // Inject "Favoritos", "Recentes", "Futebol", "Rádios" categories
-        const todosCat = channelsData.categories.find(c => c.id === 0) || { id: 0, name: "Todos" };
-        const otherCats = channelsData.categories.filter(c => c.id !== 0);
-        
-        const enhancedCategories = [
-          todosCat,
-          { id: -3, name: "Futebol Ao vivo" },
-          { id: -4, name: "Rádios Online" },
-          { id: -1, name: "Favoritos" },
-          { id: -2, name: "Recentes" },
-          ...otherCats
-        ];
-
-        setCategories(enhancedCategories);
-        setChannels(channelsData.channels);
+        const radiosData = await fetchRadios();
         setRadios(radiosData);
       } catch (error) {
-        console.error("Failed to load data", error);
+        console.error("Failed to load radios", error);
       } finally {
-        setIsAppLoading(false);
+        setIsRadiosLoading(false);
       }
     };
-    loadData();
+    loadRadios();
   }, []);
 
-  if (isAppLoading) {
+  if (isDataLoading || isRadiosLoading) {
     return (
       <div className="min-h-screen bg-dark flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
@@ -131,6 +153,7 @@ const App: React.FC = () => {
       <RadioProvider>
         <HashRouter>
           <div className="min-h-screen bg-white dark:bg-dark text-gray-900 dark:text-white font-sans relative transition-colors duration-300">
+            <Toaster position="top-right" />
             <GlobalRadioPlayer />
             <RemoteControl channels={channels} />
             <Routes>
@@ -155,11 +178,39 @@ const App: React.FC = () => {
                 path="/settings" 
                 element={<Settings isDark={isDark} toggleTheme={toggleTheme} />} 
               />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute adminOnly>
+                    <Admin />
+                  </ProtectedRoute>
+                } 
+              />
             </Routes>
           </div>
         </HashRouter>
       </RadioProvider>
     </EPGProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
+    </AuthProvider>
   );
 };
 

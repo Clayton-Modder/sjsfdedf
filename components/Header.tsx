@@ -1,6 +1,7 @@
 import React from 'react';
-import { Search, Tv, Settings } from 'lucide-react';
+import { Search, Tv, Settings, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   onSearch: (query: string) => void;
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-dark/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-300">
@@ -41,13 +43,45 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchTerm }) => {
             <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           
-          <button 
-            onClick={() => navigate('/settings')}
-            className="p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-            title="Configurações e Ajustes"
-          >
-            <Settings className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button 
+              onClick={() => navigate(user ? '/profile' : '/login')}
+              className="p-2 sm:p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-2"
+              title={user ? "Meu Perfil" : "Entrar / Cadastrar"}
+            >
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <img src={user.profilePic} alt={user.username} className="w-8 h-8 rounded-full border-2 border-primary" />
+                    <div className="absolute -bottom-1 -right-1 bg-primary text-[8px] font-bold text-white w-4 h-4 rounded-full flex items-center justify-center border border-dark">
+                      {user.level}
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold hidden md:block">{user.username}</span>
+                </div>
+              ) : (
+                <User className="w-6 h-6" />
+              )}
+            </button>
+
+            {user?.role === 'admin' && (
+              <button 
+                onClick={() => navigate('/admin')}
+                className="p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-primary transition-colors"
+                title="Painel Administrativo"
+              >
+                <Settings className="w-6 h-6" />
+              </button>
+            )}
+
+            <button 
+              onClick={() => navigate('/settings')}
+              className="p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+              title="Configurações e Ajustes"
+            >
+              <Settings className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </header>

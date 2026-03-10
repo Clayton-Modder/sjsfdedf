@@ -323,7 +323,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDark, toggleTheme }) => {
            >
              <ShieldCheck className="w-6 h-6 text-gray-500" />
            </div>
-           <p className="font-bold text-gray-600 dark:text-gray-300">Mega Canais TV v2.2.0</p>
+           <p className="font-bold text-gray-600 dark:text-gray-300">TV Online HD v2.2.0</p>
         </div>
 
       </main>

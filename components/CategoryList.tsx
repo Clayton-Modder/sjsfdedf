@@ -12,12 +12,10 @@ import {
   Shuffle,
   Heart,
   History,
-  Gamepad2,
   Clock,
   Music,
   BookOpen,
   Radio,
-  Calendar,
   LucideIcon 
 } from 'lucide-react';
 

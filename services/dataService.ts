@@ -2,7 +2,6 @@ import { ApiData, Game, Radio } from '../types';
 import { initialData } from './initialData';
 
 const CACHE_KEY = 'megacanaistv_data_v2';
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hora
 
 interface CachedData {
   timestamp: number;
@@ -14,32 +13,43 @@ interface CachedData {
 // ============================
 export const fetchChannels = async (): Promise<ApiData> => {
   try {
-    // 1️⃣ CACHE
-    const cachedString = localStorage.getItem(CACHE_KEY);
-
-    if (cachedString) {
-      const cached: CachedData = JSON.parse(cachedString);
-      if (Date.now() - cached.timestamp < CACHE_DURATION) {
-        return cached.data;
-      }
+    // 1️⃣ TENTA BUSCAR DA API DO SERVIDOR
+    const response = await fetch(`/api/data?t=${Date.now()}`);
+    if (response.ok) {
+      const freshData = await response.json();
+      
+      // SALVA NO CACHE PARA USO OFFLINE/RÁPIDO
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          timestamp: Date.now(),
+          data: freshData
+        })
+      );
+      
+      return freshData;
     }
 
-    // 2️⃣ DADOS INICIAIS
-    const freshData = initialData;
+    // 2️⃣ SE FALHAR, TENTA CACHE LOCAL
+    const cachedString = localStorage.getItem(CACHE_KEY);
+    if (cachedString) {
+      const cached: CachedData = JSON.parse(cachedString);
+      return cached.data;
+    }
 
-    // 3️⃣ SALVA CACHE
-    localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        timestamp: Date.now(),
-        data: freshData
-      })
-    );
-
-    return freshData;
+    // 3️⃣ SE TUDO FALHAR, USA DADOS INICIAIS
+    return initialData;
   } catch (error) {
     console.error('Erro ao buscar canais:', error);
-    return { categories: [], channels: [] };
+    
+    // TENTA CACHE EM CASO DE ERRO DE REDE
+    const cachedString = localStorage.getItem(CACHE_KEY);
+    if (cachedString) {
+      const cached: CachedData = JSON.parse(cachedString);
+      return cached.data;
+    }
+    
+    return initialData;
   }
 };
 

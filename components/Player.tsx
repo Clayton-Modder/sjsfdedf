@@ -10,16 +10,14 @@ import {
   Expand,
   Minimize2,
   Sparkles,
-  ExternalLink,
   Cast,
-  Radio,
-  Music2,
   Play,
   Pause,
-  Calendar
+  Calendar,
+  Signal
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { generateChannelDescription, Source } from '../services/aiService';
+import { generateChannelDescription } from '../services/aiService';
 import { castMedia, requestSession, getCastContext, CAST_STATES, initializeCastApi } from '../services/castService';
 import { InstallAppModal } from './InstallAppModal';
 import { useRadio } from '../contexts/RadioContext';
@@ -232,6 +230,22 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
   const isCastConnected = castState === CAST_STATES.CONNECTED;
 
+  // Componente de Barras de Visualizer para Rádio
+  const RadioVisualizerBars = () => (
+    <div className="flex items-end justify-center gap-1.5 h-12">
+        {[...Array(8)].map((_, i) => (
+            <div 
+                key={i} 
+                className={`w-2 bg-primary/80 rounded-t-md ${isPlaying ? 'animate-[bounce_0.8s_infinite]' : 'h-2'}`}
+                style={{ 
+                    animationDuration: `${0.6 + (i * 0.1)}s`,
+                    height: isPlaying ? '100%' : '10%'
+                }}
+            ></div>
+        ))}
+    </div>
+  );
+
   return (
     <div className={`transition-all duration-500 ${
       isCinemaMode 
@@ -264,7 +278,13 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                <div className="flex-1">
                   <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-1">{channel.name}</h2>
                   <div className="flex items-center gap-2">
-                    {isRadio && isPlaying && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+                    {isRadio && isPlaying && (
+                       <div className="flex items-end gap-0.5 h-3">
+                         <span className="w-0.5 h-2 bg-red-500 animate-[pulse_1s_infinite]"></span>
+                         <span className="w-0.5 h-3 bg-red-500 animate-[pulse_1.2s_infinite]"></span>
+                         <span className="w-0.5 h-2 bg-red-500 animate-[pulse_0.8s_infinite]"></span>
+                       </div>
+                    )}
                     <p className="text-sm text-gray-300 font-medium truncate">
                       {epgData ? (
                         <span className="text-primary font-bold uppercase">{epgData.title}</span>
@@ -293,10 +313,10 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           onTouchStart={handleInteraction}
         >
           {isBuffering && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10 text-white">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 z-10 text-white backdrop-blur-sm">
               <Loader2 className="w-12 h-12 animate-spin text-primary mb-3" />
-              <p className="text-base font-medium text-gray-300">
-                  {isRadio ? 'Sintonizando Rádio...' : 'Carregando sinal...'}
+              <p className="text-base font-medium text-gray-300 animate-pulse">
+                  {isRadio ? 'Sintonizando frequência...' : 'Carregando sinal...'}
               </p>
             </div>
           )}
@@ -318,47 +338,67 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           ) : (
             <>
               {isRadio ? (
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-black flex flex-col items-center justify-center overflow-hidden">
-                      {/* Radio Visualizer Code (Same as before) */}
-                      <div className={`absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-20'}`}></div>
-                      {isPlaying && (
-                         <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                            <div className="w-[120%] h-[100px] bg-primary blur-[80px] animate-pulse"></div>
-                         </div>
-                      )}
-                      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pb-12">
-                          <div className={`
-                                relative w-48 h-48 md:w-64 md:h-64 rounded-full 
-                                bg-gray-950 border-8 border-gray-800 shadow-2xl overflow-hidden 
-                                flex items-center justify-center
-                                transition-transform duration-[20s] ease-linear
-                                ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}
-                          `}>
-                              <img 
-                                src={channel.image} 
-                                alt={channel.name} 
-                                className="w-2/3 h-2/3 object-contain z-10 rounded-full bg-white/5 backdrop-blur-sm p-2" 
-                                onError={(e) => (e.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png')}
-                              />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden">
+                      {/* Background Animado */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-black z-0"></div>
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-50 z-0"></div>
+                      
+                      {/* Círculo Pulsante Central */}
+                      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full">
+                          <div className="relative">
+                              {isPlaying && (
+                                <>
+                                  <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse"></div>
+                                  <div className="absolute -inset-4 rounded-full border border-primary/20 animate-[spin_4s_linear_infinite]"></div>
+                                  <div className="absolute -inset-8 rounded-full border border-primary/10 animate-[spin_8s_linear_infinite_reverse]"></div>
+                                </>
+                              )}
+                              
+                              <div className={`
+                                    relative w-40 h-40 md:w-56 md:h-56 rounded-full 
+                                    bg-gray-950 border-4 border-gray-800 shadow-2xl overflow-hidden 
+                                    flex items-center justify-center
+                                    transition-transform duration-[20s] ease-linear
+                                    ${isPlaying ? 'animate-[spin_20s_linear_infinite]' : ''}
+                              `}>
+                                  <img 
+                                    src={channel.image} 
+                                    alt={channel.name} 
+                                    className="w-3/4 h-3/4 object-contain z-10 drop-shadow-lg" 
+                                    onError={(e) => (e.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png')}
+                                  />
+                              </div>
                           </div>
-                          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md mt-8">
+
+                          <div className="mt-8 mb-4 h-12 flex items-end">
+                              {isPlaying ? <RadioVisualizerBars /> : (
+                                <div className="text-gray-500 flex flex-col items-center">
+                                    <Signal className="w-6 h-6 mb-2 opacity-50" />
+                                    <span className="text-xs uppercase tracking-widest">Aguardando</span>
+                                </div>
+                              )}
+                          </div>
+                          
+                          <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border backdrop-blur-md transition-colors ${isPlaying ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
                               {isPlaying ? (
                                   <>
-                                      <span className="relative flex h-3 w-3">
+                                      <span className="relative flex h-2 w-2">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                                       </span>
-                                      <span className="text-xs font-bold text-white tracking-widest uppercase">No Ar</span>
+                                      <span className="text-xs font-bold text-red-200 tracking-widest uppercase">No Ar</span>
                                   </>
                               ) : (
                                   <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Pausado</span>
                               )}
                           </div>
                       </div>
+
+                      {/* Botão Gigante de Play/Pause Centralizado */}
                       <div className={`absolute inset-0 flex items-center justify-center z-20 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
                           <button 
                             onClick={handleTogglePlay}
-                            className="pointer-events-auto w-16 h-16 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 transition-all hover:scale-110 active:scale-95 group"
+                            className="pointer-events-auto w-20 h-20 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 transition-all hover:scale-110 active:scale-95 group shadow-[0_0_30px_rgba(255,255,255,0.1)]"
                           >
                              {isPlaying ? <Pause className="w-8 h-8 text-white fill-current" /> : <Play className="w-8 h-8 text-white fill-current ml-1" />}
                           </button>
@@ -415,7 +455,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
           {/* Top Overlay for Cinema Mode Info & Exit */}
           {isCinemaMode && (
              <div className={`
-                absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent 
+                absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent 
                 transition-opacity duration-300 flex justify-between items-start pointer-events-none
                 ${showControls ? 'opacity-100' : 'opacity-0'}
              `}>
@@ -430,10 +470,10 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                 
                 <button 
                    onClick={toggleCinemaMode}
-                   className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg backdrop-blur-sm shadow-lg transition-all"
+                   className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm shadow-lg transition-all border border-white/10"
                 >
                    <Minimize2 className="w-4 h-4" />
-                   <span className="font-bold text-sm">Sair do Cinema</span>
+                   <span className="font-bold text-sm">Sair</span>
                 </button>
              </div>
           )}
@@ -456,7 +496,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
                         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                     </button>
                 )}
-                <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto">
+                <div className="flex items-center gap-2 group/vol bg-black/40 backdrop-blur-sm p-2 rounded-lg hover:bg-black/60 transition-colors pointer-events-auto border border-white/5">
                   <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
                     {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
@@ -477,7 +517,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
              <div className="flex items-center gap-2 pointer-events-auto">
                  <button 
                    onClick={handleCastClick}
-                   className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors ${
+                   className={`p-2.5 backdrop-blur-sm rounded-lg transition-colors border border-white/5 ${
                      isCastConnected 
                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
                        : 'text-white bg-black/40 hover:bg-blue-600'
@@ -489,7 +529,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
                <button 
                  onClick={toggleCinemaMode}
-                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors flex items-center gap-2"
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-lg transition-colors flex items-center gap-2 border border-white/5"
                  title={isCinemaMode ? "Sair do Modo Cinema" : "Modo Cinema"}
                >
                  {isCinemaMode ? <Minimize2 className="w-5 h-5" /> : <Expand className="w-5 h-5" />}
@@ -498,7 +538,7 @@ export const Player: React.FC<PlayerProps> = ({ channel }) => {
 
                <button 
                  onClick={handleFullscreen}
-                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-primary rounded-lg transition-colors"
+                 className="p-2.5 text-white bg-black/40 backdrop-blur-sm hover:bg-primary rounded-lg transition-colors border border-white/5"
                  title="Tela Cheia"
                >
                  <Maximize2 className="w-5 h-5" />
