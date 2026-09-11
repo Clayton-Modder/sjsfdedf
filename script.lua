@@ -1,124 +1,183 @@
-            -- Simula coleta: Em jogos reais, aqui você faria click no objeto ou mudaria as variáveis
-            -- Exemplo genérico:
-            -- game.Players.LocalPlayer.Backpack.Sword:Activate() 
-            -- ou
-            -- Mouse.Button1Down()
-            
-            log("💰 +1000 Moedas coletadas!")
-            
-            -- Delay para não travar o executor nem ser detectado fácil (anti-ban leve)
-            wait(0.5) 
-        end
-    end)
-    thread() -- Inicia a thread
-    
-    -- Botão de stop para este botão específico (opcional, mas bom ter)
-    coroutine.wrap(function()
-        while task.wait(1) do
-            if not running then break end
-        end
-    end)
+-- 🚀 FARM HACK ULTIMATE - MENU
+-- Compatível com Roblox Executors (Synapse, Wave, Solara, Delta, etc.)
+-- Autor: NoTrack AI (Corrigido)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- 🎨 CONFIGURAÇÕES DO MENU
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+
+-- 🎨 ESTILO CYBERPUNK/NEON
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Frame.Parent = ScreenGui
+Frame.BackgroundTransparency = 0.1
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+Frame.BorderSizePixel = 0
+Frame.Size = UDim2.new(0, 250, 0, 360)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.ClipsDescendants = true
+
+-- Efeito de borda neon
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 255, 255)
+UIStroke.Thickness = 2
+UIStroke.Parent = Frame
+
+TextLabel.Parent = Frame
+TextLabel.BackgroundTransparency = 1
+TextLabel.Text = "🔥 99 NOITE FARM PRO 🔥"
+TextLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
+TextLabel.Font = Enum.Font.GothamBlack
+TextLabel.TextSize = 16
+TextLabel.TextWrapped = true
+TextLabel.Size = UDim2.new(1, -10, 0, 30)
+TextLabel.Position = UDim2.new(0, 5, 0, 5)
+
+-- 🎮 CRIADOR DE BOTÕES
+local function createButton(name, pos, size, color)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Frame
+    btn.BackgroundTransparency = 0.2
+    btn.BackgroundColor3 = color
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 12
+    btn.Size = size
+    btn.Position = pos
+    btn.BorderSizePixel = 0
+    return btn
+end
+
+local Button1 = createButton("💰 AUTO FARM MOEDAS", UDim2.new(0, 10, 0, 40), UDim2.new(0, 230, 0, 30), Color3.fromRGB(0, 200, 0))
+local Button2 = createButton("🚀 SPEED X10 (PULO)", UDim2.new(0, 10, 0, 75), UDim2.new(0, 230, 0, 30), Color3.fromRGB(0, 100, 255))
+local Button3 = createButton("🛡️ INSTANT WIN (INVENCÍVEL)", UDim2.new(0, 10, 0, 110), UDim2.new(0, 230, 0, 30), Color3.fromRGB(255, 0, 0))
+local Button4 = createButton("📦 AUTO COLETAR ITENS", UDim2.new(0, 10, 0, 145), UDim2.new(0, 230, 0, 30), Color3.fromRGB(255, 165, 0))
+local Button5 = createButton("❌ FECHAR MENU", UDim2.new(0, 10, 0, 320), UDim2.new(0, 230, 0, 30), Color3.fromRGB(100, 100, 100))
+
+-- 📊 LOG DE AÇÕES
+local LogFrame = Instance.new("Frame")
+LogFrame.Parent = Frame
+LogFrame.BackgroundTransparency = 0.5
+LogFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+LogFrame.Size = UDim2.new(0, 230, 0, 130)
+LogFrame.Position = UDim2.new(0, 10, 0, 180)
+LogFrame.BorderSizePixel = 0
+
+local LogText = Instance.new("TextLabel")
+LogText.Parent = LogFrame
+LogText.BackgroundTransparency = 1
+LogText.Text = ">>> Sistema pronto...\n>>> Aguardando comando..."
+LogText.TextColor3 = Color3.fromRGB(0, 255, 0)
+LogText.Font = Enum.Font.Code
+LogText.TextSize = 10
+LogText.TextWrapped = true
+LogText.Size = UDim2.new(1, -10, 1, -10)
+LogText.Position = UDim2.new(0, 5, 0, 5)
+LogText.TextXAlignment = Enum.TextXAlignment.Left
+LogText.TextYAlignment = Enum.TextYAlignment.Top
+
+local function log(message)
+    LogText.Text = LogText.Text .. "\n>> " .. message
+    if #LogText.Text > 400 then
+        LogText.Text = LogText.Text:sub(#LogText.Text - 300)
+    end
+end
+
+-- 🎯 FUNÇÕES
+
+-- 1. AUTO FARM MOEDAS
+local farming = false
+Button1.MouseButton1Click:Connect(function()
+    farming = not farming
+    if farming then
+        log("🚀 Iniciando Auto Farm...")
+        task.spawn(function()
+            while farming do
+                local stats = LocalPlayer:FindFirstChild("PlayerStats") or LocalPlayer:FindFirstChild("leaderstats")
+                if stats and stats:FindFirstChild("Money") then
+                    stats.Money.Value = stats.Money.Value + 999999
+                    log("💰 +999.999 moedas!")
+                else
+                    log("⚠️ Tabela de stats não encontrada!")
+                end
+                task.wait(0.5)
+            end
+        end)
+    else
+        log("🛑 Farm parado.")
+    end
 end)
 
--- 2. SPEED X10 (Pulo/Banco de Dados)
+-- 2. SPEED & JUMP
 Button2.MouseButton1Click:Connect(function()
-    local speedEnabled = true
-    log("🚀 Speed X10 ativado!")
-    
-    local thread = coroutine.wrap(function()
-        while speedEnabled and LocalPlayer do
-            -- Aumenta a velocidade de caminhada do jogador
-            LocalPlayer.Character.Humanoid.WalkSpeed = 50 -- Padrão é 16
-            
-            -- Ou pula automaticamente se quiser
-            -- LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            
-            wait(0.1) -- Loop leve
-        end
-    end)
-    thread()
-    
-    Button2.Text = "🚀 SPEED ON"
-    Button2.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Verde brilhante
-    
-    -- Lógica para desligar ao clicar de novo (simplificada)
-    Button2.MouseButton1Click:Connect(function()
-        speedEnabled = false
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-        Button2.Text = "🚀 SPEED X10 (PULO)"
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        log("⚡ Speed Ativado: Speed 50 / Pulo 150")
+        char.Humanoid.WalkSpeed = 50
+        char.Humanoid.JumpPower = 150
+        
+        Button2.BackgroundColor3 = Color3.fromRGB(0, 50, 150)
+        task.wait(1)
         Button2.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
-        log("🛑 Speed desativado.")
-    end)
+    end
 end)
 
--- 3. INSTANT WIN (Invencível / Admin)
+-- 3. INSTANT WIN / HEALTH
 Button3.MouseButton1Click:Connect(function()
-    log("🛡️ Modo Deus ativado!")
-    
-    -- Tenta encontrar o Character do jogador
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    
-    -- Configurações de "Deus"
-    hum.MaxHealth = 1000000
-    hum.Health = 1000000
-    hum.WalkSpeed = 100
-    
-    -- Cria uma armação invisível ao redor do jogador para empurrar outros (opcional)
-    local bodyForce = Instance.new("BodyForce")
-    bodyForce.Parent = char.RootPart -- Assumindo que existe RootPart (R15) ou Head (R6)
-    bodyForce.Force = Vector3.new(0, 0, 0) -- Apenas exemplo
-    
-    log("⚔️ Dano aumentado / Vida infinita.")
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        log("🛡️ Invencibilidade ON!")
+        char.Humanoid.MaxHealth = 9999
+        char.Humanoid.Health = 9999
+        log("❤️ Vida máxima: 9999/9999")
+    end
 end)
 
--- 4. AUTO COLETAR ITENS (Simulação de Mouse Click)
+-- 4. AUTO COLETAR ITENS
+local collecting = false
 Button4.MouseButton1Click:Connect(function()
-    log("📦 Auto Coletar iniciado...")
-    
-    local running = true
-    local thread = coroutine.wrap(function()
-        while running do
-            -- Simula um clique do mouse no centro da tela ou onde o mouse está
-            Mouse.Button1Down()
-            Mouse.Button1Up()
-            
-            -- Ou tenta pegar o item mais próximo se for um jogo específico
-            -- Exemplo: game.ReplicatedStorage.PickupItem:InvokeServer(ItemName)
-            
-            wait(0.2) -- Clique rápido
-        end
-    end)
-    thread()
+    collecting = not collecting
+    if collecting then
+        log("📦 Auto Coleta Ativa!")
+        task.spawn(function()
+            while collecting do
+                mouse1click() -- Executa o clique de mouse nativo de executors
+                task.wait(0.2)
+            end
+        end)
+    else
+        log("🛑 Auto Coleta Desativada.")
+    end
 end)
 
 -- 5. FECHAR MENU
 Button5.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
-    log("❌ Menu fechado.")
 end)
 
--- 🔄 DRAG DO MENU (Mover a janela)
-local Dragging = false
-local DraggingUI = nil
+-- 🎨 ARRASTAR MENU (SISTEMA CORRIGIDO)
+local dragging, dragInput, dragStart, startPos
 
 Frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        Dragging = true
-        DraggingUI = Frame:FindFirstChild("UIPosition") or Instance.new("UIGridSize", Frame) -- Apenas placeholder se precisar
-        
-        local dragTween = TweenService:Create(Frame, TweenInfo.new(0.1), {
-            Position = UDim2.new(
-                Frame.Position.X.Scale, 
-                Frame.Position.X.Offset + (input.Position.X - Frame.AbsolutePosition.X), 
-                Frame.Position.Y.Scale, 
-                Frame.Position.Y.Offset + (input.Position.Y - Frame.AbsolutePosition.Y)
-            )
-        })
-        
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
-                Dragging = false
+                dragging = false
             end
         end)
     end
@@ -126,13 +185,16 @@ end)
 
 Frame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        if Dragging then
-            -- Lógica simplificada de drag (Roblox Luau requer cálculo vetorial complexo para ser perfeito, 
-            -- mas o básico é: Frame.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y))
-            Frame.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
-        end
+        dragInput = input
     end
 end)
 
--- Mensagem final
-log("✅ Menu carregado com sucesso!")
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+log("✅ Hack carregado com sucesso!")
+log("🎮 Use os botões para farmar.")
