@@ -1,4 +1,4 @@
--- 🚀 SENIOR HUB - ULTIMATE CHEAT ENGINE UI
+-- 🚀 SENIOR ENGINE v3.0 - UNIVERSAL FARM & SURVIVAL
 -- Compatível com: Delta, Solara, Wave, Codex, Arceus X, Hydrogen
 
 local Players = game:GetService("Players")
@@ -7,154 +7,253 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local CoreGui = game:GetService("CoreGui")
 
--- Estado das Funções
+-- Destrói instâncias antigas para evitar bugs de duplicado
+if CoreGui:FindFirstChild("SeniorEngineV3") then
+    CoreGui.SeniorEngineV3:Destroy()
+end
+
+-- 📌 ESTADO GLOBAL DAS FUNÇÕES (FLAGS)
 local Flags = {
-    KillAura = false,
-    AutoCollect = false,
-    InfJump = false,
-    ESP = false,
-    SpeedHack = false
+    AutoCollect = false,  -- Farm Moedas / Itens
+    CollectFood = false,   -- Farm Comida / Kits
+    KillAura = false,      -- Elimina NPCs
+    SpeedHack = false,     -- Velocidade
+    InfJump = false,       -- Pulo Infinito
+    ESP = false            -- Wallhack
 }
 
 -- 🎨 CRIAÇÃO DA INTERFACE VISUAL
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SeniorHub_UI"
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "SeniorEngineV3"
+ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-MainFrame.Position = UDim2.new(0.35, 0, 0.25, 0)
-MainFrame.Size = UDim2.new(0, 320, 0, 410)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 340, 0, 420)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 
 local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = MainFrame
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(0, 200, 255)
+UIStroke.Color = Color3.fromRGB(0, 255, 150)
 UIStroke.Thickness = 1.5
 UIStroke.Parent = MainFrame
 
--- Título
-local Header = Instance.new("TextLabel")
-Header.Parent = MainFrame
-Header.BackgroundTransparency = 1
-Header.Size = UDim2.new(1, -20, 0, 40)
-Header.Position = UDim2.new(0, 15, 0, 5)
-Header.Font = Enum.Font.GothamBold
-Header.Text = "⚡ SENIOR ENGINE v2.0"
-Header.TextColor3 = Color3.fromRGB(0, 200, 255)
-Header.TextSize = 16
-Header.TextXAlignment = Enum.TextXAlignment.Left
+-- Top Bar (Barra Superior)
+local TopBar = Instance.new("Frame")
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BorderSizePixel = 0
 
-local ScrollContainer = Instance.new("ScrollingFrame")
-ScrollContainer.Parent = MainFrame
-ScrollContainer.BackgroundTransparency = 1
-ScrollContainer.Position = UDim2.new(0, 10, 0, 50)
-ScrollContainer.Size = UDim2.new(1, -20, 1, -60)
-ScrollContainer.ScrollBarThickness = 3
-ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 340)
+local Title = Instance.new("TextLabel")
+Title.Parent = TopBar
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.Size = UDim2.new(0.7, 0, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "⚡ SENIOR ENGINE v3.0"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Botão de Fechar Menu
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = TopBar
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "❌"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
+CloseBtn.TextSize = 14
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Conteúdo Principal (Scroll)
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Parent = MainFrame
+Scroll.BackgroundTransparency = 1
+Scroll.Position = UDim2.new(0, 10, 0, 45)
+Scroll.Size = UDim2.new(1, -20, 1, -50)
+Scroll.ScrollBarThickness = 3
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 430)
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = ScrollContainer
+UIListLayout.Parent = Scroll
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 8)
+UIListLayout.Padding = UDim.new(0, 6)
 
--- 🔘 GERADOR DE SWITCH ON/OFF
-local function CreateToggle(name, default, callback)
+-- 🔘 GERADOR DE TOGGLE SWITCH (ON / OFF CORRIGIDO)
+local function CreateToggle(text, flagKey)
     local Frame = Instance.new("Frame")
-    Frame.Parent = ScrollContainer
-    Frame.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
-    Frame.Size = UDim2.new(1, -5, 0, 45)
-    
+    Frame.Parent = Scroll
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    Frame.Size = UDim2.new(1, -5, 0, 40)
+
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.CornerRadius = UDim.new(0, 6)
     Corner.Parent = Frame
-    
+
     local Label = Instance.new("TextLabel")
     Label.Parent = Frame
     Label.BackgroundTransparency = 1
-    Label.Position = UDim2.new(0, 12, 0, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
     Label.Size = UDim2.new(0.65, 0, 1, 0)
     Label.Font = Enum.Font.GothamSemibold
-    Label.Text = name
-    Label.TextColor3 = Color3.fromRGB(220, 220, 230)
-    Label.TextSize = 13
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 12
     Label.TextXAlignment = Enum.TextXAlignment.Left
 
-    local SwitchBg = Instance.new("TextButton")
-    SwitchBg.Parent = Frame
-    SwitchBg.Text = ""
-    SwitchBg.AutoButtonColor = false
-    SwitchBg.Position = UDim2.new(1, -50, 0.5, -11)
-    SwitchBg.Size = UDim2.new(0, 40, 0, 22)
-    SwitchBg.BackgroundColor3 = default and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 65)
+    local Switch = Instance.new("TextButton")
+    Switch.Parent = Frame
+    Switch.Text = ""
+    Switch.AutoButtonColor = false
+    Switch.Position = UDim2.new(1, -45, 0.5, -10)
+    Switch.Size = UDim2.new(0, 36, 0, 20)
+    Switch.BackgroundColor3 = Flags[flagKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 75)
 
     local SwitchCorner = Instance.new("UICorner")
     SwitchCorner.CornerRadius = UDim.new(1, 0)
-    SwitchCorner.Parent = SwitchBg
+    SwitchCorner.Parent = Switch
 
-    local Knob = Instance.new("Frame")
-    Knob.Parent = SwitchBg
-    Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Knob.Size = UDim2.new(0, 16, 0, 16)
-    Knob.Position = default and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+    local Circle = Instance.new("Frame")
+    Circle.Parent = Switch
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.Size = UDim2.new(0, 14, 0, 14)
+    Circle.Position = Flags[flagKey] and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
 
-    local KnobCorner = Instance.new("UICorner")
-    KnobCorner.CornerRadius = UDim.new(1, 0)
-    KnobCorner.Parent = Knob
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
 
-    local state = default
+    Switch.MouseButton1Click:Connect(function()
+        Flags[flagKey] = not Flags[flagKey]
+        
+        local targetColor = Flags[flagKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(60, 60, 75)
+        local targetPos = Flags[flagKey] and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
 
-    SwitchBg.MouseButton1Click:Connect(function()
-        state = not state
-        local targetColor = state and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 65)
-        local targetPos = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-
-        TweenService:Create(SwitchBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        TweenService:Create(Knob, TweenInfo.new(0.2), {Position = targetPos}):Play()
-
-        callback(state)
+        TweenService:Create(Switch, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+        TweenService:Create(Circle, TweenInfo.new(0.15), {Position = targetPos}):Play()
     end)
 end
 
--- 🛠️ REGISTRO DE FUNÇÕES REAIS
+-- 🔘 GERADOR DE BOTÃO DE AÇÃO ÚNICA (TELEPORTE)
+local function CreateButton(text, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Parent = Scroll
+    Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    Btn.Size = UDim2.new(1, -5, 0, 35)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    Btn.TextSize = 12
 
--- 1. Speed Hack (Velocidade)
-CreateToggle("Speed Boost (50x)", false, function(active)
-    Flags.SpeedHack = active
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Btn
+
+    Btn.MouseButton1Click:Connect(callback)
+end
+
+-- 📋 LISTA DE MÓDULOS NO MENU
+CreateToggle("💰 Auto Farm (Moedas / Cash / Botões)", "AutoCollect")
+CreateToggle("🍕 Auto Coletar (Comida / Medkits / Drop)", "CollectFood")
+CreateToggle("⚔️ Auto Kill Aura (Zumbis & NPCs)", "KillAura")
+CreateToggle("⚡ Speed Hack (Velocidade 50x)", "SpeedHack")
+CreateToggle("🦘 Pulo Infinito (Air Jump)", "InfJump")
+CreateToggle("👁️ ESP Box (Wallhack de Inimigos)", "ESP")
+
+CreateButton("🌀 Teleportar para Ponto Seguro (Safezone)", function()
+    pcall(function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, 50, 0)
+        end
+    end)
 end)
 
--- 2. Pulo Infinito
-CreateToggle("Pulo Infinito (Air Jump)", false, function(active)
-    Flags.InfJump = active
+-- ⚙️ SISTEMA INTERNO DE EXECUÇÃO DAS FUNÇÕES (LOOPS SEPARADOS)
+
+-- 1. Farm Universal de Moedas e Toques de Botões
+task.spawn(function()
+    while task.wait(0.2) do
+        if Flags.AutoCollect then
+            pcall(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("TouchTransmitter") and obj.Parent then
+                        local parent = obj.Parent
+                        -- Filtra por partes de coleta comum
+                        if parent.Name:lower():find("coin") or parent.Name:lower():find("money") or parent.Name:lower():find("giver") or parent.Name:lower():find("button") then
+                            firetouchinterest(hrp, parent, 0)
+                            firetouchinterest(hrp, parent, 1)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- 2. Coleta de Comida, Kits e Drops
+task.spawn(function()
+    while task.wait(0.3) do
+        if Flags.CollectFood then
+            pcall(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+
+                for _, item in pairs(workspace:GetChildren()) do
+                    local name = item.Name:lower()
+                    if name:find("food") or name:find("kit") or name:find("med") or name:find("drop") or name:find("item") then
+                        local itemPart = item:FindFirstChild("Handle") or item:FindFirstChild("HumanoidRootPart") or item
+                        if itemPart:IsA("BasePart") then
+                            itemPart.CFrame = hrp.CFrame
+                        end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
 -- 3. Kill Aura Universal
-CreateToggle("Kill Aura (NPCs Próximos)", false, function(active)
-    Flags.KillAura = active
+task.spawn(function()
+    while task.wait(0.2) do
+        if Flags.KillAura then
+            pcall(function()
+                local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not myHrp then return end
+
+                for _, entity in pairs(workspace:GetChildren()) do
+                    if entity:FindFirstChild("Humanoid") and entity ~= LocalPlayer.Character and not Players:GetPlayerFromCharacter(entity) then
+                        local eHrp = entity:FindFirstChild("HumanoidRootPart") or entity:FindFirstChild("Torso")
+                        if eHrp and (eHrp.Position - myHrp.Position).Magnitude <= 35 then
+                            entity.Humanoid.Health = 0
+                        end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
--- 4. Auto Collect (Moedas / Tycoons)
-CreateToggle("Auto Coletar / Touch (Auto-Farm)", false, function(active)
-    Flags.AutoCollect = active
-end)
-
--- 5. ESP (Wallhack de Jogadores)
-CreateToggle("ESP Box / Wallhack", false, function(active)
-    Flags.ESP = active
-end)
-
--- 🔄 LOOPS DE EXECUÇÃO EM TEMPO REAL
-
--- Speed Loop
+-- 4. Speed Hack
 RunService.Stepped:Connect(function()
     pcall(function()
         if Flags.SpeedHack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -163,85 +262,40 @@ RunService.Stepped:Connect(function()
     end)
 end)
 
--- Pulo Infinito Listener
+-- 5. Air Jump
 UserInputService.JumpRequest:Connect(function()
     if Flags.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- Kill Aura Loop
-task.spawn(function()
-    while task.wait(0.2) do
-        if Flags.KillAura then
-            pcall(function()
-                local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if not myHrp then return end
-
-                for _, obj in pairs(workspace:GetChildren()) do
-                    if obj:FindFirstChild("Humanoid") and obj ~= LocalPlayer.Character then
-                        local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
-                        if hrp and (hrp.Position - myHrp.Position).Magnitude <= 30 then
-                            obj.Humanoid.Health = 0
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- Auto Collect Loop
-task.spawn(function()
-    while task.wait(0.3) do
-        if Flags.AutoCollect then
-            pcall(function()
-                local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if not myHrp then return end
-
-                for _, part in pairs(workspace:GetDescendants()) do
-                    if part:IsA("TouchTransmitter") and part.Parent then
-                        firetouchinterest(myHrp, part.Parent, 0)
-                        firetouchinterest(myHrp, part.Parent, 1)
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- ESP System
-local espHolders = {}
+-- 6. ESP (Wallhack)
 task.spawn(function()
     while task.wait(1) do
-        if Flags.ESP then
-            pcall(function()
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                        if not plr.Character:FindFirstChild("HighlightESP") then
-                            local highlight = Instance.new("Highlight")
-                            highlight.Name = "HighlightESP"
-                            highlight.FillColor = Color3.fromRGB(255, 0, 80)
+        pcall(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    local highlight = plr.Character:FindFirstChild("SeniorESP")
+                    if Flags.ESP then
+                        if not highlight then
+                            highlight = Instance.new("Highlight")
+                            highlight.Name = "SeniorESP"
+                            highlight.FillColor = Color3.fromRGB(0, 255, 150)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                            highlight.FillTransparency = 0.5
                             highlight.Parent = plr.Character
                         end
+                    else
+                        if highlight then highlight:Destroy() end
                     end
                 end
-            end)
-        else
-            for _, plr in pairs(Players:GetPlayers()) do
-                if plr.Character and plr.Character:FindFirstChild("HighlightESP") then
-                    plr.Character.HighlightESP:Destroy()
-                end
             end
-        end
+        end)
     end
 end)
 
--- 🎨 SISTEMA DE ARRASTO (DRAGGABLE UI)
+-- 🎨 ARRASTO DA JANELA (SISTEMA MOBILE & PC)
 local dragging, dragStart, startPos
-MainFrame.InputBegan:Connect(function(input)
+TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
