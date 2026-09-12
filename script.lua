@@ -1,149 +1,192 @@
 --[[
-    DeepHat GUI Module - Advanced UI Design
-    Foco: UX/UI, Animações e Gerenciamento de Estado
+    DEEPHAT ULTIMATE FRAMEWORK - FULL VERSION
+    Desenvolvido para: Zombie Defense & Farming Games
+    Funcionalidades: Auto-Kill, Auto-Farm, Speed Hack
 ]]
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local GUI_ENABLED = true
-local MainColor = Color3.fromRGB(30, 30, 30) -- Dark Theme
-local AccentColor = Color3.fromRGB(0, 170, 255) -- Blue Accent
-local ActiveColor = Color3.fromRGB(0, 255, 127) -- Green
-local InactiveColor = Color3.fromRGB(255, 70, 70) -- Red
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Criando a estrutura principal
+-- [ CONFIGURAÇÕES DO SISTEMA ]
+local Settings = {
+    AutoKill = false,
+    AutoFarm = false,
+    SpeedHack = false,
+    KillDistance = 60,
+    FarmDistance = 40,
+    WalkSpeedNormal = 16,
+    WalkSpeedFast = 50
+}
+
+-- [ LÓGICA DE COMBATE E FARM ]
+
+-- Função para encontrar o inimigo/item mais próximo
+local function GetClosestObject(className, maxDistance)
+    local closest = nil
+    local dist = maxDistance
+
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:IsA(className) and obj:FindFirstChild("HumanoidRootPart") then
+            local targetPart = obj.HumanoidRootPart
+            local magnitude = (RootPart.Position - targetPart.Position).Magnitude
+            
+            if magnitude < dist then
+                dist = magnitude
+                closest = obj
+            end
+        end
+    end
+    return closest
+end
+
+-- Loop de Combate (Auto-Kill)
+task.spawn(function()
+    while true do
+        if Settings.AutoKill then
+            local enemy = GetClosestObject("Zombie", Settings.KillDistance) -- Mude "Zombie" para o nome do NPC no seu jogo
+            
+            if enemy and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                -- Teleporte Suave para o inimigo
+                RootPart.CFrame = RootPart.CFrame:Lerp(enemy.HumanoidRootPart.CFrame, 0.4)
+                
+                -- Simula ataque (Ativa a ferramenta na mão)
+                local tool = Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- Loop de Farm (Auto-Collect)
+task.spawn(function()
+    while true do
+        if Settings.AutoFarm then
+            -- Procura por itens (ajuste o nome "Item" para o nome do item no jogo)
+            local item = workspace:FindFirstChild("DroppedItem") 
+            
+            if item and item:FindFirstChild("Handle") then
+                local dist = (RootPart.Position - item.Handle.Position).Magnitude
+                if dist < Settings.FarmDistance then
+                    RootPart.CFrame = item.Handle.CFrame
+                    task.wait(0.2)
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- [ INTERFACE GRÁFICA (UI) ]
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DeepHat_Menu"
-ScreenGui.Parent = game:GetService("CoreGui") -- Usa CoreGui para não sumir ao resetar
+ScreenGui.Parent = game:GetService("CoreGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 280)
+MainFrame.Size = UDim2.new(0, 220, 0, 300)
 MainFrame.Position = UDim2.new(0.5, -110, 0.4, 0)
-MainFrame.BackgroundColor3 = MainColor
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
--- Adicionando bordas arredondadas (UI Corner)
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
 
--- Título do Menu
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Text = "DEEP HAT | V1"
+Title.Text = "DEEPHAT MENU"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- Função para criar botões de Toggle (Ativar/Desativar)
-local function CreateToggleButton(name, position, callback)
+-- Função para criar botões funcionais
+local function CreateMenuButton(name, position, callback)
     local Button = Instance.new("TextButton")
-    Button.Name = name .. "Button"
     Button.Size = UDim2.new(0.85, 0, 0, 45)
     Button.Position = position
-    Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     Button.Text = name .. ": OFF"
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextColor3 = Color3.fromRGB(255, 70, 70)
     Button.Font = Enum.Font.GothamSemibold
     Button.TextSize = 14
-    Button.AutoButtonColor = false
     Button.Parent = MainFrame
 
-    local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 8)
-    ButtonCorner.Parent = Button
+    local BCorner = Instance.new("UICorner")
+    BCorner.CornerRadius = UDim.new(0, 8)
+    BCorner.Parent = Button
 
-    local isActive = false
+    local active = false
 
-    -- Função de Animação de Clique
     Button.MouseButton1Click:Connect(function()
-        isActive = not isActive
+        active = not active
         
-        -- Efeito de clique (Scale)
-        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local targetScale = isActive and 1.05 or 1
+        -- Efeito Visual de Ativação
+        local targetColor = active and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(255, 70, 70)
+        local targetText = active and name .. ": ON" or name .. ": OFF"
         
-        -- Mudança de cor e texto baseada no estado
-        local targetColor = isActive and ActiveColor or InactiveColor
-        local targetText = isActive and name .. ": ON" or name .. ": OFF"
-
-        -- Animação de cor suave
         TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
         Button.Text = targetText
         
-        -- Executa a função lógica (Callback) enviada pelo usuário
-        callback(isActive)
-        
-        -- Feedback Visual de clique
-        Button.Size = UDim2.new(0.8, 0, 0, 42)
-        task.wait(0.05)
-        TweenService:Create(Button, TweenInfo.new(0.2), {Size = UDim2.new(0.85, 0, 0, 45)}):Play()
+        -- Executa a função real
+        callback(active)
     end)
 end
 
--- Função para arrastar o menu pela tela (Draggable UI)
-local function MakeDraggable(frame)
-    local dragging, dragInput, dragStart, startPos
+-- [ MAPEAMENTO DE FUNÇÕES NA UI ]
 
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
-
-MakeDraggable(MainFrame)
-
----------------------------------------------------------
--- INTEGRAÇÃO COM O SISTEMA (EXEMPLO DE USO)
----------------------------------------------------------
-
--- Aqui você conecta a UI com as funções do seu script de hack
-CreateToggleButton("Auto Kill", UDim2.new(0.075, 0, 0.25, 0), function(state)
-    -- Chame aqui a função de combate que criamos no post anterior
-    print("Estado Auto Kill:", state)
-    -- Settings.AutoKill = state 
+-- Botão Auto-Kill
+CreateMenuButton("Auto Kill", UDim2.new(0.075, 0, 0.25, 0), function(state)
+    Settings.AutoKill = state
 end)
 
-CreateToggleButton("Auto Farm", UDim2.new(0.075, 0, 0.45, 0), function(state)
-    -- Chame aqui a função de farm
-    print("Estado Auto Farm:", state)
-    -- Settings.AutoFarm = state
+-- Botão Auto-Farm
+CreateMenuButton("Auto Farm", UDim2.new(0.075, 0, 0.45, 0), function(state)
+    Settings.AutoFarm = state
 end)
 
-CreateToggleButton("Speed Hack", UDim2.new(0.075, 0, 0.65, 0), function(state)
-    -- Lógica de velocidade
-    local Character = game.Players.LocalPlayer.Character
-    if Character and Character:FindFirstChild("Humanoid") then
-        Character.Humanoid.WalkSpeed = state and 50 or 16
+-- Botão Speed Hack
+CreateMenuButton("Speed Hack", UDim2.new(0.075, 0, 0.65, 0), function(state)
+    Settings.SpeedHack = state
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then
+        hum.WalkSpeed = state and Settings.WalkSpeedFast or Settings.WalkSpeedNormal
     end
 end)
 
-print("DeepHat UI Carregada. Arraste para mover.")
+-- Sistema de Arrastar Menu (Draggable)
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+print("DeepHat System: Carregado com sucesso!")
